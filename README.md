@@ -15,6 +15,16 @@ npm install
 npm run dev
 ```
 
+### Local with Cloudflare KV
+
+Để test KV trên local, cần dùng Wrangler Pages Dev (Vite dev không chạy Pages Functions):
+
+```bash
+npm run dev:kv
+```
+
+Lệnh này sẽ build trước, sau đó chạy `wrangler pages dev dist --binding PLANS`. Mở URL mà Wrangler cấp (thường `http://127.0.0.1:8788`).
+
 ## Build
 
 ```bash
