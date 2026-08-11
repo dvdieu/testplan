@@ -1000,10 +1000,15 @@ h1 {
   background: var(--surface-1);
 }
 
+.table-wrap {
+  overflow-x: auto;
+  margin-top: 10px;
+}
+
 .project-table {
   width: 100%;
+  min-width: 900px;
   border-collapse: collapse;
-  margin-top: 10px;
 }
 
 .project-table th,
@@ -1011,6 +1016,7 @@ h1 {
   padding: 10px 12px;
   border-bottom: 1px solid var(--grid);
   font-size: 13.5px;
+  white-space: nowrap;
 }
 
 .project-table th {
@@ -1038,6 +1044,11 @@ h1 {
 .project-deadline {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.project-noe {
+  font-weight: 700;
+  color: var(--text-secondary);
 }
 
 /* ---------- responsive ---------- */

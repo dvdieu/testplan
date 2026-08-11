@@ -63,30 +63,40 @@ export default function IndexPage() {
         ) : projects.length > 0 ? (
           <div className="recent-projects">
             <h3>Danh sách dự án</h3>
-            <table className="project-table summary-table">
-              <thead>
-                <tr>
-                  <th>Dự án</th>
-                  <th>Game</th>
-                  <th>Deadline Studio</th>
-                  <th>PIC Studio</th>
-                </tr>
-              </thead>
-              <tbody>
-                {projects.map(p => (
-                  <tr
-                    key={slugify(p.name)}
-                    className="project-row"
-                    onClick={() => enterProject(p.name)}
-                  >
-                    <td className="project-name">{p.name}</td>
-                    <td>{p.gameName || '—'}</td>
-                    <td className="project-deadline">{fmtFull(p.studioDeadline)}</td>
-                    <td>{p.pic || '—'}</td>
+            <div className="table-wrap">
+              <table className="project-table summary-table">
+                <thead>
+                  <tr>
+                    <th>Dự án</th>
+                    <th>Game</th>
+                    <th>KickOff</th>
+                    <th>SignOff API mong muốn</th>
+                    <th>Integration mong muốn</th>
+                    <th>Deadline Studio</th>
+                    <th>PIC Studio</th>
+                    <th>NOE</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {projects.map(p => (
+                    <tr
+                      key={slugify(p.name)}
+                      className="project-row"
+                      onClick={() => enterProject(p.name)}
+                    >
+                      <td className="project-name">{p.name}</td>
+                      <td>{p.gameName || '—'}</td>
+                      <td>{fmtFull(p.startDate)}</td>
+                      <td>{fmtFull(p.desiredApiDoc)}</td>
+                      <td>{fmtFull(p.desiredReady)}</td>
+                      <td className="project-deadline">{fmtFull(p.studioDeadline)}</td>
+                      <td>{p.pic || '—'}</td>
+                      <td className="project-noe">{p.noe ? 'YES' : 'NO'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : null}
       </div>

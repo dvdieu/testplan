@@ -23,8 +23,12 @@ export async function onRequestGet({ env }) {
         return {
           name,
           gameName: plan.gameName || '',
+          startDate: plan.startDate || '',
+          desiredApiDoc: plan.desiredApiDoc || '',
+          desiredReady: plan.desiredReady || '',
           studioDeadline: plan.studioDeadline || '',
           pic: plan.pic || '',
+          noe: plan.noe ?? false,
         };
       }),
     );
