@@ -827,29 +827,26 @@ h1 {
   text-align: center;
 }
 
-.th-noe,
-.td-noe {
-  width: 70px;
-  text-align: center;
-}
-
-.noe-toggle {
-  display: inline-flex;
+.noe-field .noe-studio {
+  display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
+  padding: 8px 0;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-secondary);
 }
 
-.noe-toggle input {
+.noe-studio input {
   accent-color: var(--series-1);
+  width: 18px;
+  height: 18px;
   margin: 0;
 }
 
 .noe-label {
-  min-width: 26px;
+  min-width: 32px;
 }
 
 .btn-del {

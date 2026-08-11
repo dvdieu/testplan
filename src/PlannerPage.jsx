@@ -45,20 +45,19 @@ function migrateRows(plan) {
     const readyDays = rest.readyDays ?? (signOff && ready ? num(diffWkd(signOff, ready)) : 0);
     const readyDate = signOff ? addWkdStr(signOff, readyDays) : null;
     const doneDays = rest.doneDays ?? (readyDate && done ? num(diffWkd(readyDate, done)) : 0);
-    return { ...rest, readyDays, doneDays, noe: rest.noe ?? false };
+    return { ...rest, readyDays, doneDays };
   });
-  return { ...plan, rows };
+  return { ...plan, noe: plan.noe ?? false, rows };
 }
 
 function defaultPlan(projectName) {
   const today = todayStr();
-  const mk = (name, contractDays, readyDays, doneDays, noe = false) => ({
+  const mk = (name, contractDays, readyDays, doneDays) => ({
     id: crypto.randomUUID(),
     name,
     contractDays,
     readyDays,
     doneDays,
-    noe,
   });
   return {
     projectName,
@@ -68,12 +67,13 @@ function defaultPlan(projectName) {
     desiredReady: addWkdStr(today, 14),
     studioDeadline: addWkdStr(today, 30),
     pic: '',
+    noe: false,
     oos: { signoff: false, ready: false, done: false },
     rows: [
-      mk('Team Infra', 3, 2, 10, false),
-      mk('Team BO', 5, 5, 12, true),
-      mk('Team Platform', 6, 7, 14, false),
-      mk('Team BE', 4, 3, 12, true),
+      mk('Team Infra', 3, 2, 10),
+      mk('Team BO', 5, 5, 12),
+      mk('Team Platform', 6, 7, 14),
+      mk('Team BE', 4, 3, 12),
     ],
   };
 }
@@ -139,7 +139,6 @@ export default function PlannerPage() {
           contractDays: 0,
           readyDays: 0,
           doneDays: 0,
-          noe: false,
         },
       ],
     }));
@@ -267,6 +266,17 @@ export default function PlannerPage() {
                 onChange={e => set('pic', e.target.value)}
               />
             </label>
+            <label className="field noe-field">
+              <span>NOE (New Owner Estimate)</span>
+              <label className="noe-toggle noe-studio">
+                <input
+                  type="checkbox"
+                  checked={plan.noe}
+                  onChange={e => set('noe', e.target.checked)}
+                />
+                <span className="noe-label">{plan.noe ? 'YES' : 'NO'}</span>
+              </label>
+            </label>
           </div>
         </div>
 
@@ -359,7 +369,6 @@ export default function PlannerPage() {
                   ngoài scope
                 </label>
               </th>
-              <th className="th-noe">NOE</th>
               <th className="th-del" />
             </tr>
           </thead>
@@ -418,16 +427,6 @@ export default function PlannerPage() {
                     <span className="days-date">→ {fmtFull(r.done)}</span>
                   </div>
                 </td>
-                <td className="td-noe">
-                  <label className="noe-toggle">
-                    <input
-                      type="checkbox"
-                      checked={r.noe}
-                      onChange={e => setRow(r.id, 'noe', e.target.checked)}
-                    />
-                    <span className="noe-label">{r.noe ? 'YES' : 'NO'}</span>
-                  </label>
-                </td>
                 <td className="td-del">
                   {rows.length > 1 && (
                     <button className="btn-del" title={`Xoá ${r.name}`} onClick={() => removeTeam(r.id)}>
@@ -461,7 +460,6 @@ export default function PlannerPage() {
                   </span>
                 )}
               </td>
-              <td className="td-noe" />
               <td className="td-del" />
             </tr>
           </tbody>
