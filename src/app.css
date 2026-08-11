@@ -978,6 +978,46 @@ h1 {
   background: var(--surface-1);
 }
 
+.project-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.project-table th,
+.project-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--grid);
+  font-size: 13.5px;
+}
+
+.project-table th {
+  color: var(--muted);
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+}
+
+.project-row {
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.project-row:hover {
+  background: color-mix(in srgb, var(--series-1) 7%, transparent);
+}
+
+.project-name {
+  font-weight: 700;
+  color: var(--series-1);
+}
+
+.project-deadline {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---------- responsive ---------- */
 
 @media (max-width: 640px) {

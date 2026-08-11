@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { fmtFull } from './date.js';
 import { listProjects } from './storage.js';
 
 function slugify(name) {
@@ -61,16 +62,31 @@ export default function IndexPage() {
           <p className="recent-loading">Đang tải danh sách dự án…</p>
         ) : projects.length > 0 ? (
           <div className="recent-projects">
-            <h3>Dự án gần đây</h3>
-            <ul>
-              {projects.map(p => (
-                <li key={slugify(p)}>
-                  <button className="btn-link" onClick={() => enterProject(p)}>
-                    {p}
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <h3>Danh sách dự án</h3>
+            <table className="project-table summary-table">
+              <thead>
+                <tr>
+                  <th>Dự án</th>
+                  <th>Game</th>
+                  <th>Deadline Studio</th>
+                  <th>PIC Studio</th>
+                </tr>
+              </thead>
+              <tbody>
+                {projects.map(p => (
+                  <tr
+                    key={slugify(p.name)}
+                    className="project-row"
+                    onClick={() => enterProject(p.name)}
+                  >
+                    <td className="project-name">{p.name}</td>
+                    <td>{p.gameName || '—'}</td>
+                    <td className="project-deadline">{fmtFull(p.studioDeadline)}</td>
+                    <td>{p.pic || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : null}
       </div>
