@@ -827,6 +827,31 @@ h1 {
   text-align: center;
 }
 
+.th-noe,
+.td-noe {
+  width: 70px;
+  text-align: center;
+}
+
+.noe-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.noe-toggle input {
+  accent-color: var(--series-1);
+  margin: 0;
+}
+
+.noe-label {
+  min-width: 26px;
+}
+
 .btn-del {
   background: none;
   border: none;
