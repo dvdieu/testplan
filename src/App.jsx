@@ -16,7 +16,7 @@ function defaultPlan() {
   return {
     gameName: 'Dragon Fortune',
     startDate: today,
-    desiredIntegration: addDaysStr(today, 14),
+    desiredApiDoc: addDaysStr(today, 7),
     studioDeadline: addDaysStr(today, 30),
     doneOutOfScope: false,
     rows: [
@@ -77,16 +77,16 @@ export default function App() {
   const feReady = maxDate(...plan.rows.map(r => r.ready));
   const projectDone = maxDate(...plan.rows.map(r => r.done));
 
-  const intSlack =
-    feReady && plan.desiredIntegration ? diffDays(feReady, plan.desiredIntegration) : null;
+  const apiSlack =
+    feContract && plan.desiredApiDoc ? diffDays(feContract, plan.desiredApiDoc) : null;
   const doneSlack =
     projectDone && plan.studioDeadline ? diffDays(projectDone, plan.studioDeadline) : null;
 
-  const canJudge = intSlack !== null && (outOfScope || doneSlack !== null);
-  const accepted = canJudge && intSlack >= 0 && (outOfScope || doneSlack >= 0);
+  const canJudge = apiSlack !== null && (outOfScope || doneSlack !== null);
+  const accepted = canJudge && apiSlack >= 0 && (outOfScope || doneSlack >= 0);
 
   const problems = [];
-  if (intSlack !== null && intSlack < 0) problems.push(`trễ mốc Integration ${-intSlack} ngày`);
+  if (apiSlack !== null && apiSlack < 0) problems.push(`trễ mốc API Doc ${-apiSlack} ngày`);
   if (!outOfScope && doneSlack !== null && doneSlack < 0)
     problems.push(`trễ Deadline Studio ${-doneSlack} ngày`);
 
@@ -99,7 +99,7 @@ export default function App() {
         <div>
           <h1>Integration Planner</h1>
           <p className="subtitle">
-            Timeline Backend có đáp ứng mốc Integration &amp; Deadline của Studio không?
+            Timeline Backend có đáp ứng mốc nhận API Doc &amp; Deadline của Studio không?
           </p>
         </div>
         <div className="header-right">
@@ -138,11 +138,11 @@ export default function App() {
               />
             </label>
             <label className="field">
-              <span>Thời gian Integration mong muốn</span>
+              <span>SignOff API mong muốn (nhận API Documentation)</span>
               <input
                 type="date"
-                value={plan.desiredIntegration}
-                onChange={e => set('desiredIntegration', e.target.value)}
+                value={plan.desiredApiDoc}
+                onChange={e => set('desiredApiDoc', e.target.value)}
               />
             </label>
             <label className="field">
@@ -164,13 +164,13 @@ export default function App() {
             <i className="be-dot dot-contract" />
             <span className="be-label">SignOff API (Mốc 2)</span>
             <span className="be-date">{fmtFull(feContract)}</span>
-            <span className="delta delta-muted">FE bắt đầu code với mock</span>
+            <SlackBadge slack={apiSlack} targetLabel="mốc mong muốn" />
           </div>
           <div className="be-row">
             <i className="be-dot dot-dev" />
             <span className="be-label">Ready Integration (Mốc 3)</span>
             <span className="be-date">{fmtFull(feReady)}</span>
-            <SlackBadge slack={intSlack} targetLabel="mốc mong muốn" />
+            <span className="delta delta-muted">Dev/Mock Done — FE integrate từ đây</span>
           </div>
           <div className="be-row">
             <i className="be-dot dot-enddev" />
@@ -189,8 +189,8 @@ export default function App() {
               : accepted
                 ? `✓ Chấp nhận được — ${
                     outOfScope
-                      ? 'đáp ứng mốc Integration (Development Done ngoài scope)'
-                      : 'đáp ứng cả 2 mốc của Studio'
+                      ? 'API Doc đúng hẹn (Development Done ngoài scope)'
+                      : 'đáp ứng cả mốc API Doc & Deadline Studio'
                   }`
                 : `✕ Không đạt — BE ${problems.join(', ')}, cần đàm phán lại plan`}
           </div>

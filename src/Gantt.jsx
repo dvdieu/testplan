@@ -12,7 +12,7 @@ import {
 
 const PHASE_LABEL = {
   contract: 'API → SignOff (Mốc 2)',
-  dev: 'Dev → Ready Integration (Mốc 3)',
+  dev: 'Dev → Ready Integration (Mốc 3 · Dev/Mock Done)',
   enddev: '→ Development Done (Mốc 4, optional)',
 };
 
@@ -21,8 +21,8 @@ export default function Gantt({ plan, feContract, feReady, projectDone }) {
   const [tip, setTip] = useState(null);
   const today = todayStr();
 
-  const { startDate, desiredIntegration, studioDeadline, doneOutOfScope } = plan;
-  const all = [startDate, desiredIntegration, studioDeadline, today, feReady];
+  const { startDate, desiredApiDoc, studioDeadline, doneOutOfScope } = plan;
+  const all = [startDate, desiredApiDoc, studioDeadline, today, feReady];
   if (!doneOutOfScope) all.push(projectDone);
   plan.rows.forEach(r => {
     all.push(r.contract, r.ready);
@@ -51,10 +51,10 @@ export default function Gantt({ plan, feContract, feReady, projectDone }) {
     startDate && { date: startDate, label: 'KickOff (M1)', cls: 'kickoff' },
     { date: today, label: 'Hôm nay', cls: 'today' },
     feContract && { date: feContract, label: 'SignOff API (M2)', cls: 'signoff' },
-    feReady && { date: feReady, label: 'Ready Integration (M3)', cls: 'readyint' },
+    feReady && { date: feReady, label: 'Ready Integration (M3 · Dev/Mock Done)', cls: 'readyint' },
     !doneOutOfScope &&
       projectDone && { date: projectDone, label: 'Dev Done (M4)', cls: 'devdone' },
-    desiredIntegration && { date: desiredIntegration, label: 'Mốc Integration', cls: 'desired' },
+    desiredApiDoc && { date: desiredApiDoc, label: 'SignOff mong muốn', cls: 'desired' },
     studioDeadline && { date: studioDeadline, label: 'Deadline Studio', cls: 'deadline' },
   ]
     .filter(Boolean)
