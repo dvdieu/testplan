@@ -314,6 +314,7 @@ h1 {
 
 .flag-area {
   position: relative;
+  transition: height 180ms ease;
 }
 
 .flag {
@@ -357,6 +358,11 @@ h1 {
   color: var(--studio-ink);
 }
 
+.flag.flag-desired,
+.flag.flag-desiredready {
+  background: color-mix(in srgb, var(--studio) 20%, var(--surface-1));
+}
+
 .flag.own-be {
   color: var(--text-primary);
   border-color: var(--baseline);
@@ -384,6 +390,7 @@ h1 {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  transition: opacity 180ms ease, height 180ms ease, margin 180ms ease;
 }
 
 .fe-name {
@@ -398,10 +405,17 @@ h1 {
 .gantt-row {
   position: relative;
   height: 44px;
+  transition: opacity 180ms ease, height 180ms ease, margin 180ms ease;
 }
 
 .gantt-row:hover {
   background: color-mix(in srgb, var(--muted) 8%, transparent);
+}
+
+.gantt-empty-row {
+  display: flex;
+  align-items: center;
+  padding-left: 10px;
 }
 
 .fe-row {
@@ -450,6 +464,10 @@ h1 {
 
 .marker.marker-deadline {
   border-color: var(--studio);
+}
+
+.marker-desiredready {
+  border-color: color-mix(in srgb, var(--studio) 55%, transparent);
 }
 
 /* BE: nét liền, màu trùng phase bar ngay bên dưới. */
@@ -720,6 +738,51 @@ h1 {
   min-width: 110px;
 }
 
+/* SignOff API: nhập số ngày kể từ KickOff, ngày suy ra hiển thị ngay bên cạnh. */
+.days-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.cell-days {
+  width: 68px;
+  min-width: 0;
+  text-align: right;
+  font-weight: 600;
+  border-color: var(--border);
+}
+
+.days-unit {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.days-date {
+  font-size: 12.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.days-max {
+  font-weight: 700;
+}
+
+.total-row .days-date {
+  color: var(--text-primary);
+}
+
+.th-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 10.5px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
 .cell-input:hover:not(:disabled) {
   border-color: var(--border);
   background: var(--page);
@@ -802,6 +865,117 @@ h1 {
   margin: 12px 0 0;
   font-size: 12px;
   color: var(--muted);
+}
+
+/* ---------- index page ---------- */
+
+.index-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.index-card {
+  width: 100%;
+  max-width: 460px;
+  text-align: center;
+  padding: 36px 32px 40px;
+}
+
+.index-card h1 {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.index-card .subtitle {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-bottom: 28px;
+}
+
+.index-form {
+  display: grid;
+  gap: 16px;
+  text-align: left;
+}
+
+.index-form .field input {
+  font-size: 16px;
+  padding: 11px 14px;
+}
+
+.btn-primary {
+  background: var(--series-1);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 18px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 150ms ease;
+}
+
+.btn-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.recent-projects {
+  margin-top: 28px;
+  text-align: left;
+  border-top: 1px solid var(--grid);
+  padding-top: 20px;
+}
+
+.recent-projects h3 {
+  margin: 0 0 12px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.recent-loading,
+.loading {
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+  padding: 20px;
+}
+
+.recent-projects ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.btn-link {
+  background: var(--page);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.btn-link:hover {
+  border-color: var(--baseline);
+  background: var(--surface-1);
 }
 
 /* ---------- responsive ---------- */

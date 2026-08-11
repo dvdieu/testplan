@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import {
   addDaysStr,
   diffDays,
+  diffWkd,
   fmtFull,
   fmtShort,
   maxDate,
@@ -16,21 +17,60 @@ const PHASE_LABEL = {
   enddev: '→ Development Done (Mốc 4, optional)',
 };
 
-export default function Gantt({ plan, feContract, feReady, projectDone }) {
+// `rows` là plan.rows đã resolve — SignOff API lưu dạng số ngày, App tính ra `contract`.
+export default function Gantt({ plan, rows, feContract, feReady, projectDone }) {
   const plotRef = useRef(null);
   const [tip, setTip] = useState(null);
   const today = todayStr();
 
-  const { startDate, desiredApiDoc, studioDeadline, doneOutOfScope } = plan;
-  const all = [startDate, desiredApiDoc, studioDeadline, today, feReady];
-  if (!doneOutOfScope) all.push(projectDone);
-  plan.rows.forEach(r => {
-    all.push(r.contract, r.ready);
-    if (!doneOutOfScope) all.push(r.done);
+  const { startDate, desiredApiDoc, desiredReady, studioDeadline, oos } = plan;
+
+  const bars = rows
+    .map(r => {
+      const contract = oos.signoff ? null : r.contract;
+      const ready = oos.ready ? null : r.ready;
+      const done = oos.done ? null : r.done;
+      const segs = [];
+      if (startDate && contract && parseDate(contract) > parseDate(startDate)) {
+        segs.push({ from: startDate, to: contract, phase: 'contract' });
+      }
+      const devFrom = oos.signoff ? startDate : feContract || contract || startDate;
+      if (devFrom && ready && parseDate(ready) > parseDate(devFrom)) {
+        segs.push({ from: devFrom, to: ready, phase: 'dev' });
+      }
+      if (ready && done && parseDate(done) > parseDate(ready)) {
+        segs.push({ from: ready, to: done, phase: 'enddev' });
+      }
+      return { id: r.id, name: r.name || 'Team ?', segs, end: maxDate(contract, ready, done) };
+    })
+    .filter(r => r.segs.length > 0);
+
+  const feWindow =
+    !oos.ready && feReady && studioDeadline && parseDate(studioDeadline) > parseDate(feReady)
+      ? { from: feReady, to: studioDeadline }
+      : null;
+  const showFeRow = !oos.ready;
+
+  // Build visible dates list — only items that will actually render.
+  // Deadline Studio là mốc cố định của Studio, luôn hiển thị bất kể OOS.
+  const visibleDates = [startDate, studioDeadline, today];
+  if (!oos.signoff) {
+    visibleDates.push(desiredApiDoc, feContract);
+  }
+  if (!oos.ready) {
+    visibleDates.push(desiredReady, feReady);
+  }
+  if (!oos.done) {
+    visibleDates.push(projectDone);
+  }
+  bars.forEach(r => {
+    r.segs.forEach(seg => {
+      visibleDates.push(seg.from, seg.to);
+    });
   });
 
-  const lo = minDate(...all);
-  const hi = maxDate(...all);
+  const lo = minDate(...visibleDates);
+  const hi = maxDate(...visibleDates);
   if (!lo || !hi) return <p className="gantt-empty">Nhập ngày để hiển thị biểu đồ.</p>;
 
   const min = addDaysStr(lo, -2);
@@ -52,21 +92,31 @@ export default function Gantt({ plan, feContract, feReady, projectDone }) {
   const markers = [
     startDate && { date: startDate, label: 'KickOff (M1)', cls: 'kickoff', owner: 'studio' },
     { date: today, label: 'Hôm nay', cls: 'today', owner: 'now' },
-    feContract && { date: feContract, label: 'SignOff API (M2)', cls: 'signoff', owner: 'be' },
-    feReady && {
-      date: feReady,
-      label: 'Ready Integration (M3 · Dev/Mock Done)',
-      cls: 'readyint',
-      owner: 'be',
-    },
-    !doneOutOfScope &&
+    !oos.signoff &&
+      feContract && { date: feContract, label: 'SignOff API (M2)', cls: 'signoff', owner: 'be' },
+    !oos.ready &&
+      feReady && {
+        date: feReady,
+        label: 'Ready Integration (M3 · Dev/Mock Done)',
+        cls: 'readyint',
+        owner: 'be',
+      },
+    !oos.done &&
       projectDone && { date: projectDone, label: 'Dev Done (M4)', cls: 'devdone', owner: 'be' },
-    desiredApiDoc && {
-      date: desiredApiDoc,
-      label: 'SignOff mong muốn',
-      cls: 'desired',
-      owner: 'studio',
-    },
+    !oos.signoff &&
+      desiredApiDoc && {
+        date: desiredApiDoc,
+        label: 'SignOff mong muốn',
+        cls: 'desired',
+        owner: 'studio',
+      },
+    !oos.ready &&
+      desiredReady && {
+        date: desiredReady,
+        label: 'Integration mong muốn',
+        cls: 'desiredready',
+        owner: 'studio',
+      },
     studioDeadline && {
       date: studioDeadline,
       label: 'Deadline Studio',
@@ -82,27 +132,6 @@ export default function Gantt({ plan, feContract, feReady, projectDone }) {
   const FLAG_STEP = 26;
   const flagged = markers.map((m, i) => ({ ...m, lv: i }));
   const flagAreaH = markers.length * FLAG_STEP + 6;
-
-  const rows = plan.rows.map(r => {
-    const done = doneOutOfScope ? null : r.done;
-    const segs = [];
-    if (startDate && r.contract && parseDate(r.contract) > parseDate(startDate)) {
-      segs.push({ from: startDate, to: r.contract, phase: 'contract' });
-    }
-    const devFrom = feContract || r.contract || startDate;
-    if (devFrom && r.ready && parseDate(r.ready) > parseDate(devFrom)) {
-      segs.push({ from: devFrom, to: r.ready, phase: 'dev' });
-    }
-    if (r.ready && done && parseDate(done) > parseDate(r.ready)) {
-      segs.push({ from: r.ready, to: done, phase: 'enddev' });
-    }
-    return { id: r.id, name: r.name || 'Team ?', segs, end: maxDate(r.contract, r.ready, done) };
-  });
-
-  const feWindow =
-    feReady && studioDeadline && parseDate(studioDeadline) > parseDate(feReady)
-      ? { from: feReady, to: studioDeadline }
-      : null;
 
   const showTip = (e, lines) => {
     const rect = plotRef.current.getBoundingClientRect();
@@ -132,12 +161,12 @@ export default function Gantt({ plan, feContract, feReady, projectDone }) {
 
       <div className="gantt-grid">
         <div className="gantt-names">
-          {rows.map(r => (
+          {bars.map(r => (
             <div key={r.id} className="gantt-name">
               {r.name}
             </div>
           ))}
-          <div className="gantt-name fe-name">FE Integration</div>
+          {showFeRow && <div className="gantt-name fe-name">FE Integration</div>}
         </div>
 
         <div className="gantt-plot" ref={plotRef} onMouseLeave={() => setTip(null)}>
@@ -165,7 +194,7 @@ export default function Gantt({ plan, feContract, feReady, projectDone }) {
             />
           ))}
 
-          {rows.map(r => (
+          {bars.map(r => (
             <div key={r.id} className="gantt-row">
               {r.segs.map(seg => (
                 <div
@@ -176,7 +205,7 @@ export default function Gantt({ plan, feContract, feReady, projectDone }) {
                     showTip(e, [
                       `${r.name} — ${PHASE_LABEL[seg.phase]}`,
                       `${fmtFull(seg.from)} → ${fmtFull(seg.to)}`,
-                      `${diffDays(seg.from, seg.to)} ngày`,
+                      `${diffWkd(seg.from, seg.to)} ngày`,
                     ])
                   }
                 >
@@ -191,30 +220,38 @@ export default function Gantt({ plan, feContract, feReady, projectDone }) {
             </div>
           ))}
 
-          <div className="gantt-row fe-row">
-            {feWindow ? (
-              <div
-                className="seg-hit"
-                style={{
-                  left: pos(feWindow.from) + '%',
-                  width: pos(feWindow.to) - pos(feWindow.from) + '%',
-                }}
-                onMouseMove={e =>
-                  showTip(e, [
-                    'Cửa sổ FE Integration',
-                    `${fmtFull(feWindow.from)} → ${fmtFull(feWindow.to)}`,
-                    `${diffDays(feWindow.from, feWindow.to)} ngày trước Deadline Studio`,
-                  ])
-                }
-              >
-                <div className="seg seg-fe">
-                  <span className="seg-fe-label">{diffDays(feWindow.from, feWindow.to)} ngày</span>
+          {showFeRow && (
+            <div className="gantt-row fe-row">
+              {feWindow ? (
+                <div
+                  className="seg-hit"
+                  style={{
+                    left: pos(feWindow.from) + '%',
+                    width: pos(feWindow.to) - pos(feWindow.from) + '%',
+                  }}
+                  onMouseMove={e =>
+                    showTip(e, [
+                      'Cửa sổ FE Integration',
+                      `${fmtFull(feWindow.from)} → ${fmtFull(feWindow.to)}`,
+                      `${diffWkd(feWindow.from, feWindow.to)} ngày trước Deadline Studio`,
+                    ])
+                  }
+                >
+                  <div className="seg seg-fe">
+                    <span className="seg-fe-label">{diffWkd(feWindow.from, feWindow.to)} ngày</span>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <span className="fe-none">✕ Không còn thời gian integration trước Deadline Studio</span>
-            )}
-          </div>
+              ) : (
+                <span className="fe-none">✕ Không còn thời gian integration trước Deadline Studio</span>
+              )}
+            </div>
+          )}
+
+          {!bars.length && !showFeRow && (
+            <div className="gantt-row gantt-empty-row">
+              <span className="fe-none">✕ Tất cả các mốc Backend đã được ẩn — tick bỏ "ngoài scope" để xem timeline.</span>
+            </div>
+          )}
 
           {tip && (
             <div
@@ -241,24 +278,30 @@ export default function Gantt({ plan, feContract, feReady, projectDone }) {
       </div>
 
       <div className="legend">
-        <span className="legend-item">
-          <i className="chip chip-contract" />
-          API → SignOff
-        </span>
-        <span className="legend-item">
-          <i className="chip chip-dev" />
-          Dev → Ready Integration
-        </span>
-        {!doneOutOfScope && (
+        {!oos.signoff && (
+          <span className="legend-item">
+            <i className="chip chip-contract" />
+            API → SignOff
+          </span>
+        )}
+        {!oos.ready && (
+          <span className="legend-item">
+            <i className="chip chip-dev" />
+            Dev → Ready Integration
+          </span>
+        )}
+        {!oos.done && (
           <span className="legend-item">
             <i className="chip chip-enddev" />
             → Development Done (optional)
           </span>
         )}
-        <span className="legend-item">
-          <i className="chip chip-fe" />
-          Cửa sổ FE Integration
-        </span>
+        {!oos.ready && (
+          <span className="legend-item">
+            <i className="chip chip-fe" />
+            Cửa sổ FE Integration
+          </span>
+        )}
         <span className="legend-sep" />
         <span className="legend-item">
           <i className="flag-key key-studio" />

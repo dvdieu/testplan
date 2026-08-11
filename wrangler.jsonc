@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "testplan",
+  "compatibility_date": "2025-02-04",
+  "pages_build_output_dir": "dist",
+  "observability": {
+    "enabled": true
+  },
+  "kv_namespaces": [
+    {
+      "binding": "PLANS",
+      "id": "ec77e6d9e8e64c229465992beeba27e5"
+    }
+  ]
+}

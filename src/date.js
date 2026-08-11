@@ -31,6 +31,51 @@ export function diffDays(a, b) {
   return Math.round((parseDate(b) - parseDate(a)) / DAY);
 }
 
+// ---------- working-day (WKD) helpers ----------
+
+function getUtcDay(s) {
+  const t = parseDate(s);
+  return t === null ? null : new Date(t).getUTCDay();
+}
+
+export function isWeekend(s) {
+  const d = getUtcDay(s);
+  return d === 0 || d === 6;
+}
+
+// Next working day on or after s (skips Sat/Sun).
+export function nextWkd(s) {
+  let cur = s;
+  while (isWeekend(cur)) {
+    cur = addDaysStr(cur, 1);
+  }
+  return cur;
+}
+
+// Add n working days to s. Weekends are skipped, never counted.
+export function addWkdStr(s, n) {
+  let cur = nextWkd(s);
+  for (let i = 0; i < n; i++) {
+    cur = addDaysStr(cur, 1);
+    cur = nextWkd(cur);
+  }
+  return cur;
+}
+
+// Working days from a to b (b - a), skipping weekends. Always >= 0.
+export function diffWkd(a, b) {
+  let start = nextWkd(a);
+  const end = parseDate(b);
+  if (end === null || parseDate(start) === null || parseDate(start) >= end) return 0;
+  let count = 0;
+  while (parseDate(start) < end) {
+    count++;
+    start = addDaysStr(start, 1);
+    start = nextWkd(start);
+  }
+  return count;
+}
+
 export function fmtShort(s) {
   if (!s) return '—';
   const [, m, d] = s.split('-');
