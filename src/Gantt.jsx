@@ -72,7 +72,7 @@ export default function Gantt({ plan, feContract, feReady, projectDone }) {
     if (startDate && r.contract && parseDate(r.contract) > parseDate(startDate)) {
       segs.push({ from: startDate, to: r.contract, phase: 'contract' });
     }
-    const devFrom = r.contract || startDate;
+    const devFrom = feContract || r.contract || startDate;
     if (devFrom && r.ready && parseDate(r.ready) > parseDate(devFrom)) {
       segs.push({ from: devFrom, to: r.ready, phase: 'dev' });
     }
