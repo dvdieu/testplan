@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Gantt from './Gantt.jsx';
 import { loadPlan, savePlan } from './storage.js';
+import { PHASES, phaseDesiredLabel, phaseItemLabel, phaseLabel } from './phase.js';
 import {
   addWkdStr,
   diffWkd,
@@ -50,7 +51,7 @@ function migrateRows(plan) {
   return { ...plan, noe: plan.noe ?? false, rows };
 }
 
-function defaultPlan(projectName) {
+function defaultPlan(projectName, phase) {
   const today = todayStr();
   const mk = (name, contractDays, readyDays, doneDays) => ({
     id: crypto.randomUUID(),
@@ -61,6 +62,7 @@ function defaultPlan(projectName) {
   });
   return {
     projectName,
+    phase,
     gameName: projectName,
     startDate: today,
     desiredApiDoc: addWkdStr(today, 7),
@@ -87,14 +89,14 @@ function migrateOos(saved) {
   };
 }
 
-async function loadPlanAsync(projectName) {
-  const remote = await loadPlan(projectName);
+async function loadPlanAsync(projectName, phase) {
+  const remote = await loadPlan(projectName, phase);
   if (remote) {
-    const base = { ...defaultPlan(projectName), ...remote, oos: migrateOos(remote) };
+    const base = { ...defaultPlan(projectName, phase), ...remote, oos: migrateOos(remote) };
     delete base.doneOutOfScope;
     return migrateRows(base);
   }
-  return defaultPlan(projectName);
+  return defaultPlan(projectName, phase);
 }
 
 function SlackBadge({ slack, targetLabel }) {
@@ -107,20 +109,21 @@ function SlackBadge({ slack, targetLabel }) {
 export default function PlannerPage() {
   const { projectName } = useParams();
   const navigate = useNavigate();
-  const [plan, setPlan] = useState(() => defaultPlan(projectName));
+  const [phase, setPhase] = useState('engine');
+  const [plan, setPlan] = useState(() => defaultPlan(projectName, phase));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    loadPlanAsync(projectName).then(p => {
+    loadPlanAsync(projectName, phase).then(p => {
       setPlan(p);
       setLoading(false);
     });
-  }, [projectName]);
+  }, [projectName, phase]);
 
   useEffect(() => {
-    if (!loading) savePlan(projectName, plan);
-  }, [plan, projectName, loading]);
+    if (!loading) savePlan(projectName, phase, plan);
+  }, [plan, projectName, phase, loading]);
 
   const set = (field, value) => setPlan(p => ({ ...p, [field]: value }));
   const setRow = (id, field, value) =>
@@ -144,6 +147,9 @@ export default function PlannerPage() {
     }));
   const removeTeam = id =>
     setPlan(p => (p.rows.length <= 1 ? p : { ...p, rows: p.rows.filter(r => r.id !== id) }));
+
+  const itemLabel = phaseItemLabel(phase);
+  const desiredLabel = phaseDesiredLabel(phase);
 
   const { oos } = plan;
   const rows = resolveRows(plan);
@@ -177,7 +183,7 @@ export default function PlannerPage() {
 
   const problems = [];
   if (!oos.signoff && apiSlack !== null && apiSlack < 0)
-    problems.push(`trễ mốc API Doc ${-apiSlack} ngày`);
+    problems.push(`trễ mốc ${itemLabel} ${-apiSlack} ngày`);
   if (!oos.ready && readySlack !== null && readySlack < 0)
     problems.push(`trễ mốc Integration mong muốn ${-readySlack} ngày`);
   if (!oos.done && doneSlack !== null && doneSlack < 0)
@@ -210,11 +216,23 @@ export default function PlannerPage() {
           <button className="btn-reset" onClick={() => navigate('/')}>
             ← Chọn dự án khác
           </button>
-          <button className="btn-reset" onClick={() => setPlan(defaultPlan(projectName))}>
+          <button className="btn-reset" onClick={() => setPlan(defaultPlan(projectName, phase))}>
             Reset mặc định
           </button>
         </div>
       </header>
+
+      <div className="phase-tabs">
+        {PHASES.map(p => (
+          <button
+            key={p}
+            className={`phase-tab ${p === phase ? 'active' : ''}`}
+            onClick={() => setPhase(p)}
+          >
+            {phaseLabel(p)}
+          </button>
+        ))}
+      </div>
 
       <section className="card chart-card">
         <h2>Timeline</h2>
@@ -224,6 +242,8 @@ export default function PlannerPage() {
           feContract={feContract}
           feReady={feReady}
           projectDone={projectDone}
+          itemLabel={itemLabel}
+          desiredLabel={desiredLabel}
         />
       </section>
 
@@ -246,7 +266,7 @@ export default function PlannerPage() {
               <input type="date" value={plan.startDate} onChange={e => set('startDate', e.target.value)} />
             </label>
             <label className="field">
-              <span>SignOff API mong muốn (nhận API Documentation)</span>
+              <span>{itemLabel} mong muốn</span>
               <input type="date" value={plan.desiredApiDoc} onChange={e => set('desiredApiDoc', e.target.value)} />
             </label>
             <label className="field">
@@ -286,12 +306,12 @@ export default function PlannerPage() {
 
           <div className="be-row">
             <i className="be-dot dot-contract" />
-            <span className="be-label">SignOff API (Mốc 2)</span>
+            <span className="be-label">{itemLabel} (Mốc 2)</span>
             <span className="be-date">{oos.signoff ? 'Ngoài scope' : fmtFull(feContract)}</span>
             {oos.signoff ? (
               <span className="delta delta-muted">không đánh giá</span>
             ) : (
-              <SlackBadge slack={apiSlack} targetLabel="mốc mong muốn" />
+              <SlackBadge slack={apiSlack} targetLabel={desiredLabel} />
             )}
           </div>
           <div className="be-row">
@@ -330,13 +350,13 @@ export default function PlannerPage() {
       </section>
 
       <section className="card">
-        <h2>Kế hoạch Backend — edit trực tiếp trong bảng</h2>
+        <h2>Kế hoạch Backend — {itemLabel}</h2>
         <table className="summary-table edit-table">
           <thead>
             <tr>
               <th>Team</th>
               <th>
-                SignOff API<span className="th-sub">số ngày từ KickOff</span>
+                {itemLabel}<span className="th-sub">số ngày từ KickOff</span>
                 <label className="oos-toggle">
                   <input
                     type="checkbox"

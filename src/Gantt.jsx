@@ -11,19 +11,22 @@ import {
   todayStr,
 } from './date.js';
 
-const PHASE_LABEL = {
-  contract: 'API → SignOff (Mốc 2)',
-  dev: 'Dev → Ready Integration (Mốc 3 · Dev/Mock Done)',
-  enddev: '→ Development Done (Mốc 4, optional)',
-};
+function phaseLabels(itemLabel) {
+  return {
+    contract: `${itemLabel} → SignOff (Mốc 2)`,
+    dev: 'Dev → Ready Integration (Mốc 3 · Dev/Mock Done)',
+    enddev: '→ Development Done (Mốc 4, optional)',
+  };
+}
 
 // `rows` là plan.rows đã resolve — SignOff API lưu dạng số ngày, App tính ra `contract`.
-export default function Gantt({ plan, rows, feContract, feReady, projectDone }) {
+export default function Gantt({ plan, rows, feContract, feReady, projectDone, itemLabel = 'API', desiredLabel = 'SignOff mong muốn' }) {
   const plotRef = useRef(null);
   const [tip, setTip] = useState(null);
   const today = todayStr();
 
   const { startDate, desiredApiDoc, desiredReady, studioDeadline, oos } = plan;
+  const PHASE_LABEL = phaseLabels(itemLabel);
 
   const bars = rows
     .map(r => {
@@ -93,7 +96,7 @@ export default function Gantt({ plan, rows, feContract, feReady, projectDone }) 
     startDate && { date: startDate, label: 'KickOff (M1)', cls: 'kickoff', owner: 'studio' },
     { date: today, label: 'Hôm nay', cls: 'today', owner: 'now' },
     !oos.signoff &&
-      feContract && { date: feContract, label: 'SignOff API (M2)', cls: 'signoff', owner: 'be' },
+      feContract && { date: feContract, label: `${itemLabel} (M2)`, cls: 'signoff', owner: 'be' },
     !oos.ready &&
       feReady && {
         date: feReady,
@@ -106,7 +109,7 @@ export default function Gantt({ plan, rows, feContract, feReady, projectDone }) 
     !oos.signoff &&
       desiredApiDoc && {
         date: desiredApiDoc,
-        label: 'SignOff mong muốn',
+        label: desiredLabel,
         cls: 'desired',
         owner: 'studio',
       },

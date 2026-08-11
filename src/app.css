@@ -889,6 +889,37 @@ h1 {
   color: var(--muted);
 }
 
+/* ---------- phase tabs ---------- */
+
+.phase-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.phase-tab {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px 18px;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.phase-tab:hover {
+  border-color: var(--baseline);
+}
+
+.phase-tab.active {
+  background: var(--series-1);
+  border-color: var(--series-1);
+  color: #fff;
+}
+
 /* ---------- index page ---------- */
 
 .index-page {
