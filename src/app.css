@@ -15,6 +15,8 @@
   --series-1: #2a78d6; /* phase: thiết kế API contract */
   --series-2: #eb6834; /* phase: dev → ready integration */
   --series-3: #1baf7a; /* cửa sổ FE integration */
+  --studio: #4a3aa7; /* owner: mốc do Studio đặt ra */
+  --studio-ink: #ffffff; /* chữ trên nền --studio đặc */
   --good: #0ca30c;
   --good-text: #006300;
   --critical: #d03b3b;
@@ -36,6 +38,8 @@
     --series-1: #3987e5;
     --series-2: #d95926;
     --series-3: #199e70;
+    --studio: #9085e9;
+    --studio-ink: #0d0d0d;
     --good: #0ca30c;
     --good-text: #0ca30c;
     --critical: #d03b3b;
@@ -140,6 +144,19 @@ h1 {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-secondary);
+}
+
+/* Viền trái = owner, khớp màu nhãn mốc trên biểu đồ. */
+.studio-card {
+  border-left: 3px solid var(--studio);
+}
+
+.studio-card h2 {
+  color: var(--studio);
+}
+
+.be-card {
+  border-left: 3px solid var(--baseline);
 }
 
 .card-note {
@@ -313,18 +330,42 @@ h1 {
   z-index: 2;
 }
 
-.flag-deadline {
-  color: var(--critical);
-  border-color: color-mix(in srgb, var(--critical) 45%, transparent);
+/* Owner families — STUDIO = tím, BE = nền trắng + chấm màu khớp bar. */
+
+.flag-owner {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  margin-right: 5px;
+  opacity: 0.8;
 }
 
-.flag-desired {
+.flag.own-studio {
+  color: var(--studio);
+  border-color: color-mix(in srgb, var(--studio) 45%, transparent);
+  background: color-mix(in srgb, var(--studio) 9%, var(--surface-1));
+}
+
+/* Ba mốc Studio phân cấp trong cùng một hue: KickOff nhạt → Deadline đặc. */
+.flag.flag-kickoff {
+  background: var(--surface-1);
+}
+
+.flag.flag-deadline {
+  background: var(--studio);
+  border-color: var(--studio);
+  color: var(--studio-ink);
+}
+
+.flag.own-be {
   color: var(--text-primary);
   border-color: var(--baseline);
+  background: var(--surface-1);
 }
 
 .flag-today {
   color: var(--muted);
+  border-style: dashed;
 }
 
 .gantt-names {
@@ -397,28 +438,34 @@ h1 {
   border-color: var(--text-secondary);
 }
 
-.marker-kickoff {
-  border-left-style: solid;
-  border-left-width: 1px;
-  border-color: var(--baseline);
+/* Studio: nét đứt tím — mục tiêu, chưa phải ngày làm thật. */
+.marker.own-studio {
+  border-left-style: dashed;
+  border-color: color-mix(in srgb, var(--studio) 55%, transparent);
 }
 
-.flag-kickoff {
-  color: var(--text-secondary);
+.marker.marker-kickoff {
+  border-left-width: 1px;
+}
+
+.marker.marker-deadline {
+  border-color: var(--studio);
+}
+
+/* BE: nét liền, màu trùng phase bar ngay bên dưới. */
+.marker.own-be {
+  border-left-style: solid;
 }
 
 .marker-signoff {
-  border-left-style: solid;
   border-color: color-mix(in srgb, var(--series-1) 70%, transparent);
 }
 
 .marker-readyint {
-  border-left-style: solid;
   border-color: color-mix(in srgb, var(--series-2) 70%, transparent);
 }
 
 .marker-devdone {
-  border-left-style: solid;
   border-color: color-mix(in srgb, var(--muted) 60%, transparent);
 }
 
@@ -445,13 +492,6 @@ h1 {
   background: var(--muted);
 }
 
-.marker-desired {
-  border-color: var(--text-secondary);
-}
-
-.marker-deadline {
-  border-color: var(--critical);
-}
 
 .seg-hit {
   position: absolute;
@@ -600,8 +640,34 @@ h1 {
   background: var(--series-3);
 }
 
-.legend-note {
-  color: var(--muted);
+.legend-sep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--grid);
+}
+
+/* Mẫu nhãn mốc trong legend — cùng khuôn với pill thật trên biểu đồ. */
+.flag-key {
+  width: 17px;
+  height: 12px;
+  border-radius: 999px;
+  border: 1px solid;
+  flex: none;
+}
+
+.key-studio {
+  background: color-mix(in srgb, var(--studio) 20%, var(--surface-1));
+  border-color: var(--studio);
+}
+
+.key-be {
+  background: var(--surface-1);
+  border-color: var(--baseline);
+}
+
+.legend-item b {
+  font-weight: 800;
+  letter-spacing: 0.05em;
 }
 
 /* ---------- editable table ---------- */

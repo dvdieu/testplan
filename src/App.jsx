@@ -116,9 +116,11 @@ export default function App() {
       </section>
 
       <section className="top-grid">
-        <div className="card">
+        <div className="card studio-card">
           <h2>Studio</h2>
-          <p className="card-note">Yêu cầu từ phía Studio / khách hàng</p>
+          <p className="card-note">
+            Yêu cầu từ phía Studio / khách hàng — hiện trên biểu đồ dưới dạng nhãn tím
+          </p>
           <div className="studio-grid">
             <label className="field">
               <span>Game Name</span>
@@ -158,7 +160,9 @@ export default function App() {
 
         <div className="card be-card">
           <h2>Backend đáp ứng</h2>
-          <p className="card-note">= MAX từng mốc của {plan.rows.length} team trong bảng dưới</p>
+          <p className="card-note">
+            = MAX từng mốc của {plan.rows.length} team trong bảng dưới — nhãn trắng trên biểu đồ
+          </p>
 
           <div className="be-row">
             <i className="be-dot dot-contract" />

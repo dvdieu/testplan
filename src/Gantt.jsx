@@ -47,15 +47,32 @@ export default function Gantt({ plan, feContract, feReady, projectDone }) {
     if (new Date(parseDate(addDaysStr(min, i))).getUTCDay() === 6) weekends.push(i);
   }
 
+  // owner drives the flag's color family: 'studio' = tím (mục tiêu / ràng buộc),
+  // 'be' = trắng + chấm màu khớp bar (kế hoạch thực tế), 'now' = xám trung tính.
   const markers = [
-    startDate && { date: startDate, label: 'KickOff (M1)', cls: 'kickoff' },
-    { date: today, label: 'Hôm nay', cls: 'today' },
-    feContract && { date: feContract, label: 'SignOff API (M2)', cls: 'signoff' },
-    feReady && { date: feReady, label: 'Ready Integration (M3 · Dev/Mock Done)', cls: 'readyint' },
+    startDate && { date: startDate, label: 'KickOff (M1)', cls: 'kickoff', owner: 'studio' },
+    { date: today, label: 'Hôm nay', cls: 'today', owner: 'now' },
+    feContract && { date: feContract, label: 'SignOff API (M2)', cls: 'signoff', owner: 'be' },
+    feReady && {
+      date: feReady,
+      label: 'Ready Integration (M3 · Dev/Mock Done)',
+      cls: 'readyint',
+      owner: 'be',
+    },
     !doneOutOfScope &&
-      projectDone && { date: projectDone, label: 'Dev Done (M4)', cls: 'devdone' },
-    desiredApiDoc && { date: desiredApiDoc, label: 'SignOff mong muốn', cls: 'desired' },
-    studioDeadline && { date: studioDeadline, label: 'Deadline Studio', cls: 'deadline' },
+      projectDone && { date: projectDone, label: 'Dev Done (M4)', cls: 'devdone', owner: 'be' },
+    desiredApiDoc && {
+      date: desiredApiDoc,
+      label: 'SignOff mong muốn',
+      cls: 'desired',
+      owner: 'studio',
+    },
+    studioDeadline && {
+      date: studioDeadline,
+      label: 'Deadline Studio',
+      cls: 'deadline',
+      owner: 'studio',
+    },
   ]
     .filter(Boolean)
     .sort((a, b) => parseDate(a.date) - parseDate(b.date));
@@ -101,9 +118,12 @@ export default function Gantt({ plan, feContract, feReady, projectDone }) {
           {flagged.map(m => (
             <span
               key={m.cls}
-              className={`flag flag-${m.cls}`}
+              className={`flag flag-${m.cls} own-${m.owner}`}
               style={{ left: pos(m.date) + '%', top: m.lv * FLAG_STEP + 'px' }}
             >
+              {m.owner !== 'now' && (
+                <b className="flag-owner">{m.owner === 'studio' ? 'STUDIO' : 'BE'}</b>
+              )}
               {m.label} · {fmtShort(m.date)}
             </span>
           ))}
@@ -137,7 +157,7 @@ export default function Gantt({ plan, feContract, feReady, projectDone }) {
           {flagged.map(m => (
             <div
               key={m.cls}
-              className={`marker marker-${m.cls}`}
+              className={`marker marker-${m.cls} own-${m.owner}`}
               style={{
                 left: pos(m.date) + '%',
                 top: -(flagAreaH - m.lv * FLAG_STEP - 20) + 'px',
@@ -239,7 +259,15 @@ export default function Gantt({ plan, feContract, feReady, projectDone }) {
           <i className="chip chip-fe" />
           Cửa sổ FE Integration
         </span>
-        <span className="legend-item legend-note">Mốc dọc: xem nhãn cắm phía trên biểu đồ</span>
+        <span className="legend-sep" />
+        <span className="legend-item">
+          <i className="flag-key key-studio" />
+          Mốc <b>STUDIO</b> — mục tiêu / ràng buộc
+        </span>
+        <span className="legend-item">
+          <i className="flag-key key-be" />
+          Mốc <b>BE</b> — kế hoạch thực tế (MAX các team)
+        </span>
       </div>
     </div>
   );
