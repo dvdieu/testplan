@@ -23,7 +23,7 @@ npm run dev
 npm run dev:kv
 ```
 
-Lệnh này sẽ build trước, sau đó chạy `wrangler pages dev dist --binding PLANS`. Mở URL mà Wrangler cấp (thường `http://127.0.0.1:8788`).
+Lệnh này sẽ build trước, sau đó chạy `wrangler pages dev dist --kv=PLANS=<id>`. Mở URL mà Wrangler cấp (thường `http://127.0.0.1:8788`).
 
 ## Build
 

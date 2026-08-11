@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:kv": "npm run build && wrangler pages dev dist --binding PLANS",
+    "dev:kv": "npm run build && npx wrangler pages dev dist --kv=PLANS=ec77e6d9e8e64c229465992beeba27e5",
     "build": "vite build",
     "preview": "vite preview"
   },
