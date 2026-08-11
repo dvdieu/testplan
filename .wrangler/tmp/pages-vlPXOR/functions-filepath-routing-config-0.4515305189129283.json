@@ -1,0 +1,53 @@
+{
+  "routes": [
+    {
+      "routePath": "/api/projects/:name",
+      "mountPath": "/api/projects",
+      "method": "GET",
+      "module": [
+        "api/projects/[name].js:onRequestGet"
+      ]
+    },
+    {
+      "routePath": "/api/projects/:name",
+      "mountPath": "/api/projects",
+      "method": "OPTIONS",
+      "module": [
+        "api/projects/[name].js:onRequestOptions"
+      ]
+    },
+    {
+      "routePath": "/api/projects/:name",
+      "mountPath": "/api/projects",
+      "method": "PUT",
+      "module": [
+        "api/projects/[name].js:onRequestPut"
+      ]
+    },
+    {
+      "routePath": "/api/projects",
+      "mountPath": "/api/projects",
+      "method": "GET",
+      "module": [
+        "api/projects/index.js:onRequestGet"
+      ]
+    },
+    {
+      "routePath": "/api/projects",
+      "mountPath": "/api/projects",
+      "method": "OPTIONS",
+      "module": [
+        "api/projects/index.js:onRequestOptions"
+      ]
+    },
+    {
+      "routePath": "/api/projects",
+      "mountPath": "/api/projects",
+      "method": "PUT",
+      "module": [
+        "api/projects/index.js:onRequestPut"
+      ]
+    }
+  ],
+  "baseURL": "/"
+}
