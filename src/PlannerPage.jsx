@@ -553,18 +553,31 @@ export default function PlannerPage() {
           setField={set}
           addTeam={addTeam}
           addChild={addChild}
-          removeTeam={removeTeam}
           msOptions={msOptions}
           phaseMsSel={phaseMsSel}
           phaseMsLabel={phaseMsLabel}
           setPhaseMs={setPhaseMs}
         />
+
+        <div className="team-manager">
+          <span className="team-manager-label">Xoá team:</span>
+          {rows.filter(r => !r.parentId).map(r => (
+            <button
+              key={r.id}
+              className="btn-del-team"
+              title={`Xoá ${r.name}`}
+              onClick={() => removeTeam(r.id)}
+            >
+              {r.name || 'Team ?'} ×
+            </button>
+          ))}
+        </div>
+
         <p className="logic-note">
           Nhấp đúp ô để sửa: <b>Task Name</b> (đổi tên team), <b>Start</b> (đổi KickOff / Mốc 1),
           <b> Duration</b> (số ngày làm việc của từng phase). Caret ▸ để <b>ẩn/hiện</b> nhóm. Hàng
           <b> 🎯 Mốc Studio</b> (kim cương tím) là mốc mong muốn phía Studio. Mỗi mốc Backend = ngày
-          muộn nhất (MAX) của mọi team &amp; task con. Dùng cột <b>＋</b> để thêm task con, phím
-          <b> Delete</b> để xoá team.
+          muộn nhất (MAX) của mọi team &amp; task con. Dùng cột <b>＋</b> trong lưới để thêm task con.
         </p>
       </section>
     </div>
