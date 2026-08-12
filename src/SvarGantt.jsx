@@ -349,12 +349,18 @@ export default function SvarGantt({
       return false;
     });
 
-    // Click vào cột ✕ để xoá team (SVAR nuốt event, nên bắt capture trên body)
-    const gridBody = wrapRef.current && wrapRef.current.querySelector('.wx-body');
-    if (gridBody) {
+    // Click vào cột ✕ để xoá team (SVAR nuốt event, nên bắt capture trên toàn bộ wrap)
+    const wrap = wrapRef.current;
+    if (wrap) {
       const clickDelete = e => {
-        const cell = e.target.closest('.wx-cell[data-col-id="del"]');
+        // Bắt click lên text ✕ hoặc cell chứa ✕
+        const span = e.target.closest('.svar-del');
+        const cell = span
+          ? span.closest('.wx-cell')
+          : e.target.closest('.wx-cell[data-col-id="del"], .wx-cell[data-col-id=":del"]');
         if (!cell) return;
+        const colId = cell.getAttribute('data-col-id') || '';
+        if (!colId.endsWith('del')) return;
         const row = cell.closest('[data-id]');
         if (!row) return;
         const rawId = row.getAttribute('data-id');
@@ -365,7 +371,7 @@ export default function SvarGantt({
           removeTeam(task.teamId);
         }
       };
-      gridBody.addEventListener('click', clickDelete, true);
+      wrap.addEventListener('click', clickDelete, true);
     }
   };
 
