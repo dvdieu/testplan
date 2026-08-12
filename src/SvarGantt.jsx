@@ -265,17 +265,7 @@ export default function SvarGantt({
       header: 'Milestone',
       width: 178,
       align: 'left',
-      // options lọc bỏ các mốc đã được phase khác chọn (trừ option đang chọn của row hiện tại)
-      options: task => {
-        if (!task || task.kind !== 'leaf') return [];
-        const selfId = (task.phaseKey && phaseMsSel[task.phaseKey]) || '';
-        const used = new Set(
-          Object.entries(phaseMsSel)
-            .filter(([k, v]) => v && k !== task.phaseKey)
-            .map(([, v]) => v),
-        );
-        return msOptions.filter(o => !used.has(o.id) || o.id === selfId);
-      },
+      options: msOptions,
       editor: task => (task && task.kind === 'leaf' ? { type: 'richselect' } : false),
       template: (v, task) => (task && task.msLabel) || '',
     },
