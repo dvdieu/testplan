@@ -270,15 +270,12 @@ export default function SvarGantt({
       template: (v, task) => (task && task.msLabel) || '',
     },
     {
-      // Cột xoá: chỉ hàng team (kind='team') mới có dấu ✕ (click xử lý qua capture)
+      // Cột xoá: chỉ hàng team (kind='team') mới có dấu ✕
       id: 'del',
       header: '',
       width: 42,
       align: 'center',
-      template: (v, task) =>
-        task && task.kind === 'team'
-          ? '<span class="svar-del" title="Xoá team">✕</span>'
-          : '',
+      template: (v, task) => (task && task.kind === 'team' ? '✕' : ''),
     },
   ];
 
@@ -349,20 +346,18 @@ export default function SvarGantt({
       return false;
     });
 
-    // Click vào cột ✕ để xoá team (SVAR nuốt event, nên bắt capture trên toàn bộ wrap)
+    // Click vào cột ✕ để xoá team. SVAR dùng class hash nên không dựa vào data-col-id;
+    // cột delete là cột cuối cùng của row và có text '✕'.
     const wrap = wrapRef.current;
     if (wrap) {
       const clickDelete = e => {
-        // Bắt click lên text ✕ hoặc cell chứa ✕
-        const span = e.target.closest('.svar-del');
-        const cell = span
-          ? span.closest('.wx-cell')
-          : e.target.closest('.wx-cell[data-col-id="del"], .wx-cell[data-col-id=":del"]');
+        const cell = e.target.closest('.wx-cell');
         if (!cell) return;
-        const colId = cell.getAttribute('data-col-id') || '';
-        if (!colId.endsWith('del')) return;
+        // Chỉ xử lý cell cuối cùng trong row và chứa dấu ✕
         const row = cell.closest('[data-id]');
         if (!row) return;
+        if (cell !== row.lastElementChild) return;
+        if (!cell.textContent.includes('✕')) return;
         const rawId = row.getAttribute('data-id');
         const task = api.getTask(rawId) || api.getTask(rawId.replace(/^:/, ''));
         if (task && task.kind === 'team' && removeTeam) {
