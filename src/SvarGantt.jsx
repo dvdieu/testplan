@@ -265,8 +265,17 @@ export default function SvarGantt({
       header: 'Milestone',
       width: 178,
       align: 'left',
-      options: msOptions, // tham chiếu danh sách mốc Studio động ở trên
-      // chỉ hàng phase (leaf) mới chọn mốc; hàng nhóm không có editor
+      // options lọc bỏ các mốc đã được phase khác chọn (trừ option đang chọn của row hiện tại)
+      options: task => {
+        if (!task || task.kind !== 'leaf') return [];
+        const selfId = (task.phaseKey && phaseMsSel[task.phaseKey]) || '';
+        const used = new Set(
+          Object.entries(phaseMsSel)
+            .filter(([k, v]) => v && k !== task.phaseKey)
+            .map(([, v]) => v),
+        );
+        return msOptions.filter(o => !used.has(o.id) || o.id === selfId);
+      },
       editor: task => (task && task.kind === 'leaf' ? { type: 'richselect' } : false),
       template: (v, task) => (task && task.msLabel) || '',
     },
@@ -317,7 +326,11 @@ export default function SvarGantt({
       if (t.kind === 'leaf' && t.field && ch.wd !== undefined && num(ch.wd) !== num(t.wd)) {
         setRow(t.teamId, t.field, num(ch.wd)); // Duration → *Days của phase
       } else if (t.kind === 'leaf' && t.phaseKey && ch.ms !== undefined && ch.ms !== t.ms) {
-        if (setPhaseMs) setPhaseMs(t.phaseKey, ch.ms); // chọn mốc Studio cho phase
+        // Chặn chọn trùng milestone cho phase khác
+        const alreadyUsed = Object.entries(phaseMsSel).some(
+          ([k, v]) => k !== t.phaseKey && v === ch.ms,
+        );
+        if (!alreadyUsed && setPhaseMs) setPhaseMs(t.phaseKey, ch.ms);
       } else if (ch.text !== undefined && ch.text !== t.text) {
         if (t.kind === 'team') setRow(t.teamId, 'name', ch.text); // Task Name → tên team
         else if (t.kind === 'project' && setField) setField('gameName', ch.text);
