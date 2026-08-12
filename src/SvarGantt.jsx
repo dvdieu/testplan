@@ -346,27 +346,30 @@ export default function SvarGantt({
       return false;
     });
 
-    // Click vào cột ✕ để xoá team. SVAR dùng class hash nên không dựa vào data-col-id;
-    // cột delete là cột cuối cùng của row và có text '✕'.
+    // Xoá bằng phím Delete: khi một row team đang được chọn trong lưới.
     const wrap = wrapRef.current;
     if (wrap) {
-      const clickDelete = e => {
-        const cell = e.target.closest('.wx-cell');
-        if (!cell) return;
-        // Chỉ xử lý cell cuối cùng trong row và chứa dấu ✕
-        const row = cell.closest('[data-id]');
-        if (!row) return;
-        if (cell !== row.lastElementChild) return;
-        if (!cell.textContent.includes('✕')) return;
-        const rawId = row.getAttribute('data-id');
-        const task = api.getTask(rawId) || api.getTask(rawId.replace(/^:/, ''));
-        if (task && task.kind === 'team' && removeTeam) {
-          e.stopPropagation();
+      const keyDelete = e => {
+        if (e.key !== 'Delete' && e.key !== 'Del') return;
+        // Ưu tiên lấy task đang được SVAR chọn
+        let selected = api.getSelectedTask ? api.getSelectedTask() : null;
+        // Fallback: tìm row có class selected/focus trong DOM
+        if (!selected) {
+          const activeRow = wrap.querySelector('.wx-row.wx-selected, .wx-row.wx-active, [data-id].wx-selected');
+          if (activeRow) {
+            const rawId = activeRow.getAttribute('data-id');
+            selected = api.getTask(rawId) || api.getTask(rawId.replace(/^:/, ''));
+          }
+        }
+        if (selected && selected.kind === 'team' && removeTeam) {
           e.preventDefault();
-          removeTeam(task.teamId);
+          e.stopPropagation();
+          removeTeam(selected.teamId);
         }
       };
-      wrap.addEventListener('click', clickDelete, true);
+      wrap.addEventListener('keydown', keyDelete, true);
+      // Focus wrap để nhận key ngay khi click vào lưới
+      wrap.tabIndex = 0;
     }
   };
 
