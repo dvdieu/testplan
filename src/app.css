@@ -1143,3 +1143,194 @@ h1 {
     overflow-x: auto;
   }
 }
+
+/* ============================================================
+   SVAR React Gantt — MS Project schedule (Lịch Backend)
+   Left grid: Task Name / Start / Dur · Right: bars + markers
+   ============================================================ */
+.svar-wrap {
+  height: 62vh;
+  min-height: 480px;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.svar-wrap > div,
+.svar-wrap .wx-willow,
+.svar-wrap .wx-gantt {
+  height: 100%;
+}
+
+/* taskbar colors by phase. SVAR resets unknown task types to 'task', so we hook
+   the STABLE data-id suffix instead of a type class. SVAR paints the bar body
+   from --wx-gantt-task-color (inner .wx-segment) and progress from
+   --wx-gantt-task-fill-color; custom props inherit down, so setting them on the
+   bar node colors every inner paint element (no !important needed). */
+.wx-gantt .wx-bar[data-id$="~contract"] {
+  --wx-gantt-task-color: var(--series-1);
+  --wx-gantt-task-fill-color: color-mix(in srgb, var(--series-1) 82%, #000);
+  --wx-gantt-task-border: 1px solid color-mix(in srgb, var(--series-1) 65%, #000);
+  --wx-gantt-task-border-color: color-mix(in srgb, var(--series-1) 65%, #000);
+  --wx-gantt-task-font-color: #fff;
+}
+.wx-gantt .wx-bar[data-id$="~dev"] {
+  --wx-gantt-task-color: var(--series-2);
+  --wx-gantt-task-fill-color: color-mix(in srgb, var(--series-2) 82%, #000);
+  --wx-gantt-task-border: 1px solid color-mix(in srgb, var(--series-2) 65%, #000);
+  --wx-gantt-task-border-color: color-mix(in srgb, var(--series-2) 65%, #000);
+  --wx-gantt-task-font-color: #fff;
+}
+.wx-gantt .wx-bar[data-id$="~done"] {
+  --wx-gantt-task-color: color-mix(in srgb, var(--muted) 42%, var(--surface-1));
+  --wx-gantt-task-fill-color: color-mix(in srgb, var(--muted) 55%, var(--surface-1));
+  --wx-gantt-task-border: 1px solid color-mix(in srgb, var(--muted) 55%, #000);
+  --wx-gantt-task-border-color: color-mix(in srgb, var(--muted) 55%, #000);
+  --wx-gantt-task-font-color: var(--text-primary);
+}
+/* diagonal hatch marks the derived "done" buffer */
+.wx-gantt .wx-bar[data-id$="~done"] .wx-segment {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0 4px,
+    color-mix(in srgb, #000 9%, transparent) 4px 8px
+  );
+}
+.wx-gantt .wx-bar[data-id=":fe"] {
+  --wx-gantt-task-color: var(--series-3);
+  --wx-gantt-task-fill-color: color-mix(in srgb, var(--series-3) 82%, #000);
+  --wx-gantt-task-border: 1px solid color-mix(in srgb, var(--series-3) 65%, #000);
+  --wx-gantt-task-border-color: color-mix(in srgb, var(--series-3) 65%, #000);
+  --wx-gantt-task-font-color: #fff;
+}
+/* Level-1 project bracket (root summary) — đậm hơn team */
+.wx-gantt .wx-bar[data-id=":root"] {
+  --wx-gantt-summary-color: var(--text-secondary);
+  --wx-gantt-summary-border-color: var(--text-secondary);
+}
+
+/* Studio milestones — violet diamonds (type 'milestone', hàng 🎯 Mốc Studio) */
+.wx-gantt {
+  --wx-gantt-milestone-color: var(--studio);
+  --wx-gantt-milestone-border-color: color-mix(in srgb, var(--studio) 60%, #000);
+}
+.wx-gantt .wx-bar.wx-milestone .wx-text-out {
+  color: var(--studio);
+  font-weight: 600;
+}
+
+/* weekend highlight (highlightTime) */
+.wx-gantt .wx-weekend {
+  background: color-mix(in srgb, var(--muted) 9%, transparent) !important;
+}
+
+/* Cột xoá ✕ trong lưới — hiện như nút xoá, đỏ khi hover */
+.svar-wrap .wx-gantt .wx-cell[data-col-id=':del'] {
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-weight: 700;
+  transition: color 0.15s;
+}
+.svar-wrap .wx-gantt .wx-cell[data-col-id=':del']:hover {
+  color: #e5484d;
+}
+
+/* chart card header: title + Thêm team button trên một hàng */
+.chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.chart-head h2 {
+  margin: 0;
+}
+
+/* out-of-scope mini toggle trong panel Backend */
+.oos-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.oos-mini input {
+  margin: 0;
+}
+
+/* ---------- mốc Studio động ---------- */
+.ms-editor {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.ms-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.ms-editor-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--studio);
+}
+.ms-rows {
+  display: grid;
+  gap: 6px;
+}
+.ms-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto auto;
+  gap: 6px;
+  align-items: center;
+}
+.ms-row input,
+.ms-row select {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--page);
+  color: var(--text-primary);
+  border-radius: 7px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 12.5px;
+}
+.ms-row select {
+  cursor: pointer;
+}
+.ms-row input:focus,
+.ms-row select:focus {
+  outline: 2px solid var(--studio);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+.ms-row .ms-date {
+  width: auto;
+}
+.ms-row .btn-del {
+  justify-self: end;
+}
+/* Mốc hard code (API-CONTRACT): Loại khoá + không xoá */
+.ms-type-hard {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  border: 1px dashed var(--border);
+  border-radius: 7px;
+  padding: 6px 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--studio);
+  background: color-mix(in srgb, var(--studio) 7%, var(--page));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

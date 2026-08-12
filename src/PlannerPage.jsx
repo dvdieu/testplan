@@ -1,18 +1,65 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import Gantt from './Gantt.jsx';
+import SvarGantt from './SvarGantt.jsx';
 import { loadPlan, savePlan } from './storage.js';
 import { PHASES, phaseDesiredLabel, phaseItemLabel, phaseLabel } from './phase.js';
 import {
   addWkdStr,
   diffWkd,
   fmtFull,
+  fmtShort,
   maxDate,
   parseDate,
   todayStr,
 } from './date.js';
 
 const num = v => Math.max(0, Math.round(Number(v) || 0));
+
+// Mốc Studio động: mỗi mốc = Loại (type) · Status · Ngày mong muốn.
+// Loại (type): tự do, có gợi ý. Status: COMBOBOX cố định 4 giá trị dưới.
+const MS_TYPES = ['API-CONTRACT', 'BE-GAME', 'Deploy BE', 'Tool-Cheat Game', 'Tool-Cheat Ví'];
+const MS_STATUSES = [
+  { value: 'SignOff', label: 'SignOff · Đã chốt' },
+  { value: 'Smoke test', label: 'Smoke test' },
+  { value: 'READY', label: 'READY' },
+  { value: 'DONE', label: 'DONE' },
+];
+const MS_STATUS_VALUES = new Set(MS_STATUSES.map(s => s.value));
+// Map status cũ (R4*) → enum mới khi nạp plan cũ
+const LEGACY_STATUS = {
+  R4Implementation: 'SignOff',
+  R4Network: 'Smoke test',
+  R4Integration: 'READY',
+  R4QC: 'DONE',
+  R4RTPPair: 'DONE',
+};
+const normStatus = s => (MS_STATUS_VALUES.has(s) ? s : LEGACY_STATUS[s] || 'READY');
+
+// Bộ mốc mặc định theo yêu cầu Studio.
+// Mốc API-CONTRACT = HARD CODE: luôn có, Loại khoá, không xoá được (chỉ sửa Status/Ngày).
+const defaultMilestones = today => [
+  { id: crypto.randomUUID(), type: 'API-CONTRACT', status: 'SignOff', date: addWkdStr(today, 7), hard: true },
+  { id: crypto.randomUUID(), type: 'BE-GAME', status: 'Smoke test', date: addWkdStr(today, 12) },
+  { id: crypto.randomUUID(), type: 'BE-GAME', status: 'READY', date: addWkdStr(today, 16) },
+  { id: crypto.randomUUID(), type: 'BE-GAME', status: 'DONE', date: addWkdStr(today, 26) },
+];
+
+// Phase Backend ↔ mốc Studio: nếu chưa ghim (phaseMs) thì suy theo status/type
+const PHASE_MS_RE = {
+  contract: /signoff|contract|^api/i,
+  dev: /ready|integration/i,
+  done: /^done$|deploy|rtp/i,
+};
+const resolvePhaseMs = (plan, key) => {
+  const list = plan.milestones || [];
+  const pinnedId = plan.phaseMs && plan.phaseMs[key];
+  const pinned = pinnedId && list.find(m => m.id === pinnedId);
+  return (
+    pinned ||
+    list.find(m => PHASE_MS_RE[key].test(m.status || '') || PHASE_MS_RE[key].test(m.type || '')) ||
+    null
+  );
+};
 
 // Bảng chỉ nhập số ngày làm việc (WKD); mọi ngày đều suy ra từ KickOff theo chuỗi:
 //   SignOff API  = KickOff + contractDays
@@ -65,11 +112,10 @@ function defaultPlan(projectName, phase) {
     phase,
     gameName: projectName,
     startDate: today,
-    desiredApiDoc: addWkdStr(today, 7),
-    desiredReady: addWkdStr(today, 14),
     studioDeadline: addWkdStr(today, 30),
     pic: '',
     noe: false,
+    milestones: defaultMilestones(today),
     oos: { signoff: false, ready: false, done: false },
     rows: [
       mk('Team Infra', 3, 2, 10),
@@ -94,6 +140,19 @@ async function loadPlanAsync(projectName, phase) {
   if (remote) {
     const base = { ...defaultPlan(projectName, phase), ...remote, oos: migrateOos(remote) };
     delete base.doneOutOfScope;
+    // Plan cũ chưa có milestones động → seed từ mặc định
+    if (!Array.isArray(base.milestones) || base.milestones.length === 0) {
+      base.milestones = defaultMilestones(base.startDate || todayStr());
+    }
+    // Chuẩn hoá status cũ (R4*) về enum combobox mới
+    base.milestones = base.milestones.map(m => ({ ...m, status: normStatus(m.status) }));
+    // Nâng cấp mốc API-CONTRACT sẵn có → hard (Loại khoá). Không tự thêm lại nếu user đã xoá.
+    if (!base.milestones.some(m => m.hard)) {
+      const idx = base.milestones.findIndex(m => m.type === 'API-CONTRACT');
+      if (idx >= 0) {
+        base.milestones = base.milestones.map((m, i) => (i === idx ? { ...m, hard: true } : m));
+      }
+    }
     return migrateRows(base);
   }
   return defaultPlan(projectName, phase);
@@ -139,9 +198,9 @@ export default function PlannerPage() {
         {
           id: crypto.randomUUID(),
           name: `Team ${p.rows.length + 1}`,
-          contractDays: 0,
-          readyDays: 0,
-          doneDays: 0,
+          contractDays: 2,
+          readyDays: 2,
+          doneDays: 3,
         },
       ],
     }));
@@ -154,9 +213,9 @@ export default function PlannerPage() {
         id: crypto.randomUUID(),
         parentId,
         name: `Task ${siblings.length + 1}`,
-        contractDays: 0,
-        readyDays: 0,
-        doneDays: 0,
+        contractDays: 1,
+        readyDays: 1,
+        doneDays: 1,
       };
       const rows = [...p.rows];
       rows.splice(parentIndex + siblings.length + 1, 0, newRow);
@@ -183,6 +242,35 @@ export default function PlannerPage() {
       return { ...p, rows: p.rows.filter(r => !idsToRemove.has(r.id)) };
     });
 
+  // Mốc Studio động
+  const setMilestone = (id, field, value) =>
+    setPlan(p => ({
+      ...p,
+      milestones: (p.milestones || []).map(m => {
+        if (m.id !== id) return m;
+        if (m.hard && field === 'type') return m; // Loại khoá cho mốc hard code
+        return { ...m, [field]: value };
+      }),
+    }));
+  const addMilestone = () =>
+    setPlan(p => ({
+      ...p,
+      milestones: [
+        ...(p.milestones || []),
+        {
+          id: crypto.randomUUID(),
+          type: 'BE-GAME',
+          status: 'READY',
+          date: p.startDate || todayStr(),
+        },
+      ],
+    }));
+  const removeMilestone = id =>
+    setPlan(p => ({ ...p, milestones: (p.milestones || []).filter(m => m.id !== id) }));
+  // Ghim phase Backend → 1 mốc Studio (chọn ở cột Milestone trong biểu đồ)
+  const setPhaseMs = (key, msId) =>
+    setPlan(p => ({ ...p, phaseMs: { ...(p.phaseMs || {}), [key]: msId } }));
+
   const itemLabel = phaseItemLabel(phase);
   const desiredLabel = phaseDesiredLabel(phase);
 
@@ -191,16 +279,28 @@ export default function PlannerPage() {
   const feContract = maxDate(...rows.map(r => r.contract));
   const feReady = maxDate(...rows.map(r => r.ready));
   const projectDone = maxDate(...rows.map(r => r.done));
-  const maxContractDays = Math.max(...rows.map(r => num(r.contractDays)));
-  const maxReadyDays = Math.max(...rows.map(r => num(r.readyDays)));
-  const maxDoneDays = Math.max(...rows.map(r => num(r.doneDays)));
+
+  // Mốc Studio động → options combo + mapping phase→mốc (chart & verdict dùng chung)
+  const msList = plan.milestones || [];
+  const msOptions = msList.map(m => ({
+    id: m.id,
+    label: `${m.type} · ${m.status} · ${fmtShort(m.date)}`,
+  }));
+  const phaseMsSel = {};
+  const phaseMsLabel = {};
+  ['contract', 'dev', 'done'].forEach(k => {
+    const m = resolvePhaseMs(plan, k);
+    phaseMsSel[k] = m ? m.id : '';
+    phaseMsLabel[k] = m ? `${m.type} · ${m.status}` : '';
+  });
+  // Ngày Studio mong muốn cho verdict — theo mốc đã map cho phase contract / dev
+  const effApiDoc = resolvePhaseMs(plan, 'contract')?.date;
+  const effReady = resolvePhaseMs(plan, 'dev')?.date;
 
   const apiSlack =
-    !oos.signoff && feContract && plan.desiredApiDoc
-      ? diffWkd(feContract, plan.desiredApiDoc)
-      : null;
+    !oos.signoff && feContract && effApiDoc ? diffWkd(feContract, effApiDoc) : null;
   const readySlack =
-    !oos.ready && feReady && plan.desiredReady ? diffWkd(feReady, plan.desiredReady) : null;
+    !oos.ready && feReady && effReady ? diffWkd(feReady, effReady) : null;
   const doneSlack =
     !oos.done && projectDone && plan.studioDeadline
       ? diffWkd(projectDone, plan.studioDeadline)
@@ -223,9 +323,6 @@ export default function PlannerPage() {
     problems.push(`trễ mốc Integration mong muốn ${-readySlack} ngày`);
   if (!oos.done && doneSlack !== null && doneSlack < 0)
     problems.push(`trễ Deadline Studio ${-doneSlack} ngày`);
-
-  const setDays = (id, field) => e =>
-    setRow(id, field, e.target.value === '' ? '' : num(e.target.value));
 
   if (loading) {
     return (
@@ -269,19 +366,6 @@ export default function PlannerPage() {
         ))}
       </div>
 
-      <section className="card chart-card">
-        <h2>Timeline</h2>
-        <Gantt
-          plan={plan}
-          rows={rows}
-          feContract={feContract}
-          feReady={feReady}
-          projectDone={projectDone}
-          itemLabel={itemLabel}
-          desiredLabel={desiredLabel}
-        />
-      </section>
-
       <section className="top-grid">
         <div className="card studio-card">
           <h2>Studio</h2>
@@ -299,14 +383,6 @@ export default function PlannerPage() {
             <label className="field">
               <span>KickOff Date (Mốc 1)</span>
               <input type="date" value={plan.startDate} onChange={e => set('startDate', e.target.value)} />
-            </label>
-            <label className="field">
-              <span>{itemLabel} mong muốn</span>
-              <input type="date" value={plan.desiredApiDoc} onChange={e => set('desiredApiDoc', e.target.value)} />
-            </label>
-            <label className="field">
-              <span>Ngày mong muốn Integration được (M3 mong muốn)</span>
-              <input type="date" value={plan.desiredReady} onChange={e => set('desiredReady', e.target.value)} />
             </label>
             <label className="field">
               <span>Deadline từ Studio</span>
@@ -333,11 +409,68 @@ export default function PlannerPage() {
               </label>
             </label>
           </div>
+
+          <div className="ms-editor">
+            <div className="ms-editor-head">
+              <span className="ms-editor-title">🎯 Mốc Studio mong muốn — Loại · Status · Ngày</span>
+              <button className="btn-add-child" onClick={addMilestone}>
+                + Thêm mốc
+              </button>
+            </div>
+            <div className="ms-rows">
+              {(plan.milestones || []).map(m => (
+                <div className={`ms-row${m.hard ? ' ms-row-hard' : ''}`} key={m.id}>
+                  {m.hard ? (
+                    <span className="ms-type ms-type-hard" title="Mốc cố định — hard code">
+                      🔒 {m.type}
+                    </span>
+                  ) : (
+                    <input
+                      className="ms-type"
+                      list="ms-types"
+                      value={m.type}
+                      placeholder="Loại"
+                      onChange={e => setMilestone(m.id, 'type', e.target.value)}
+                    />
+                  )}
+                  <select
+                    className="ms-status"
+                    value={m.status}
+                    onChange={e => setMilestone(m.id, 'status', e.target.value)}
+                  >
+                    {MS_STATUSES.map(s => (
+                      <option key={s.value} value={s.value}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className="ms-date"
+                    type="date"
+                    value={m.date || ''}
+                    onChange={e => setMilestone(m.id, 'date', e.target.value)}
+                  />
+                  <button
+                    className="btn-del"
+                    title="Xoá mốc"
+                    onClick={() => removeMilestone(m.id)}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+            <datalist id="ms-types">
+              {MS_TYPES.map(t => (
+                <option key={t} value={t} />
+              ))}
+            </datalist>
+          </div>
         </div>
 
         <div className="card be-card">
           <h2>Backend đáp ứng</h2>
-          <p className="card-note">= MAX từng mốc của {rows.length} team trong bảng dưới — nhãn trắng trên biểu đồ</p>
+          <p className="card-note">= MAX từng mốc của {rows.length} team trong biểu đồ dưới — bar màu trên timeline</p>
 
           <div className="be-row">
             <i className="be-dot dot-contract" />
@@ -348,6 +481,14 @@ export default function PlannerPage() {
             ) : (
               <SlackBadge slack={apiSlack} targetLabel={desiredLabel} />
             )}
+            <label className="oos-mini">
+              <input
+                type="checkbox"
+                checked={oos.signoff}
+                onChange={e => set('oos', { ...oos, signoff: e.target.checked })}
+              />
+              ngoài scope
+            </label>
           </div>
           <div className="be-row">
             <i className="be-dot dot-dev" />
@@ -358,6 +499,14 @@ export default function PlannerPage() {
             ) : (
               <SlackBadge slack={readySlack} targetLabel="mốc Integration mong muốn" />
             )}
+            <label className="oos-mini">
+              <input
+                type="checkbox"
+                checked={oos.ready}
+                onChange={e => set('oos', { ...oos, ready: e.target.checked })}
+              />
+              ngoài scope
+            </label>
           </div>
           <div className="be-row">
             <i className="be-dot dot-enddev" />
@@ -368,6 +517,14 @@ export default function PlannerPage() {
             ) : (
               <SlackBadge slack={doneSlack} targetLabel="Deadline Studio" />
             )}
+            <label className="oos-mini">
+              <input
+                type="checkbox"
+                checked={oos.done}
+                onChange={e => set('oos', { ...oos, done: e.target.checked })}
+              />
+              ngoài scope
+            </label>
           </div>
 
           <div className={`be-verdict ${accepted ? 'verdict-ok' : 'verdict-bad'}`}>
@@ -384,160 +541,36 @@ export default function PlannerPage() {
         </div>
       </section>
 
-      <section className="card">
-        <h2>Kế hoạch Backend — {itemLabel}</h2>
-        <table className="summary-table edit-table">
-          <thead>
-            <tr>
-              <th>Team</th>
-              <th>
-                {itemLabel}<span className="th-sub">số ngày từ KickOff</span>
-                <label className="oos-toggle">
-                  <input
-                    type="checkbox"
-                    checked={oos.signoff}
-                    onChange={e => set('oos', { ...oos, signoff: e.target.checked })}
-                  />
-                  ngoài scope
-                </label>
-              </th>
-              <th>
-                Ready Integration<span className="th-sub">số ngày từ SignOff API (MAX)</span>
-                <label className="oos-toggle">
-                  <input
-                    type="checkbox"
-                    checked={oos.ready}
-                    onChange={e => set('oos', { ...oos, ready: e.target.checked })}
-                  />
-                  ngoài scope
-                </label>
-              </th>
-              <th>
-                Development Done
-                <span className="th-sub">số ngày từ Ready Integration</span>
-                <label className="oos-toggle">
-                  <input
-                    type="checkbox"
-                    checked={oos.done}
-                    onChange={e => set('oos', { ...oos, done: e.target.checked })}
-                  />
-                  ngoài scope
-                </label>
-              </th>
-              <th className="th-del" />
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(r => (
-              <tr key={r.id} className={r.parentId ? 'row-child' : 'row-parent'}>
-                <td>
-                  <div className="name-cell">
-                    {r.parentId && <span className="child-indent">↳</span>}
-                    <input
-                      className={`cell-input cell-name ${r.parentId ? 'cell-child' : ''}`}
-                      type="text"
-                      value={r.name}
-                      placeholder={r.parentId ? 'Tên task con' : 'Tên team'}
-                      onChange={e => setRow(r.id, 'name', e.target.value)}
-                    />
-                  </div>
-                </td>
-                <td>
-                  <div className="days-cell">
-                    <input
-                      className="cell-input cell-days"
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={r.contractDays}
-                      onChange={setDays(r.id, 'contractDays')}
-                    />
-                    <span className="days-unit">ngày</span>
-                    <span className="days-date">→ {fmtFull(r.contract)}</span>
-                  </div>
-                </td>
-                <td>
-                  <div className="days-cell">
-                    <input
-                      className="cell-input cell-days"
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={r.readyDays}
-                      onChange={setDays(r.id, 'readyDays')}
-                    />
-                    <span className="days-unit">ngày</span>
-                    <span className="days-date">→ {fmtFull(r.ready)}</span>
-                  </div>
-                </td>
-                <td>
-                  <div className="days-cell">
-                    <input
-                      className="cell-input cell-days"
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={r.doneDays}
-                      disabled={oos.done}
-                      onChange={setDays(r.id, 'doneDays')}
-                    />
-                    <span className="days-unit">ngày</span>
-                    <span className="days-date">→ {fmtFull(r.done)}</span>
-                  </div>
-                </td>
-                <td className="td-del">
-                  <div className="row-actions">
-                    {!r.parentId && (
-                      <button
-                        className="btn-add-child"
-                        title={`Thêm task con cho ${r.name}`}
-                        onClick={() => addChild(r.id)}
-                      >
-                        +
-                      </button>
-                    )}
-                    <button className="btn-del" title={`Xoá ${r.name}`} onClick={() => removeTeam(r.id)}>
-                      ×
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            <tr className="total-row">
-              <td>MAX (quyết định)</td>
-              <td>
-                <span className="days-cell">
-                  <span className="days-max">{maxContractDays} ngày</span>
-                  <span className="days-date">→ {fmtFull(feContract)}</span>
-                </span>
-              </td>
-              <td>
-                <span className="days-cell">
-                  <span className="days-max">{maxReadyDays} ngày</span>
-                  <span className="days-date">→ {fmtFull(feReady)}</span>
-                </span>
-              </td>
-              <td>
-                {oos.done ? (
-                  '—'
-                ) : (
-                  <span className="days-cell">
-                    <span className="days-max">{maxDoneDays} ngày</span>
-                    <span className="days-date">→ {fmtFull(projectDone)}</span>
-                  </span>
-                )}
-              </td>
-              <td className="td-del" />
-            </tr>
-          </tbody>
-        </table>
-        <button className="btn-add" onClick={addTeam}>
-          + Thêm team
-        </button>
+      <section className="card chart-card">
+        <div className="chart-head">
+          <h2>Lịch Backend — sửa trực tiếp Task Name / Start / Duration trong lưới</h2>
+          <button className="btn-add" onClick={addTeam}>
+            + Thêm team
+          </button>
+        </div>
+        <SvarGantt
+          plan={plan}
+          rows={rows}
+          feContract={feContract}
+          feReady={feReady}
+          projectDone={projectDone}
+          itemLabel={itemLabel}
+          setRow={setRow}
+          setField={set}
+          addTeam={addTeam}
+          addChild={addChild}
+          removeTeam={removeTeam}
+          msOptions={msOptions}
+          phaseMsSel={phaseMsSel}
+          phaseMsLabel={phaseMsLabel}
+          setPhaseMs={setPhaseMs}
+        />
         <p className="logic-note">
-          Sửa trực tiếp trong bảng — panel Backend &amp; biểu đồ phía trên cập nhật ngay. Cả 3 cột
-          đều nhập <b>số ngày làm việc</b>. Bấm dấu + trên hàng team để thêm task con (1 level).
-          Mỗi mốc của Backend = ngày muộn nhất (MAX) của tất cả team &amp; task con.
+          Nhấp đúp ô để sửa: <b>Task Name</b> (đổi tên team), <b>Start</b> (đổi KickOff / Mốc 1),
+          <b> Duration</b> (số ngày làm việc của từng phase). Caret ▸ để <b>ẩn/hiện</b> nhóm. Hàng
+          <b> 🎯 Mốc Studio</b> (kim cương tím) là mốc mong muốn phía Studio. Mỗi mốc Backend = ngày
+          muộn nhất (MAX) của mọi team &amp; task con. Dùng cột <b>＋</b> để thêm task con, phím
+          <b> Delete</b> để xoá team.
         </p>
       </section>
     </div>
