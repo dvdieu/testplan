@@ -12,7 +12,7 @@
   --grid: #e1e0d9;
   --baseline: #c3c2b7;
   --border: rgba(11, 11, 11, 0.1);
-  --series-1: #2a78d6; /* phase: thiết kế API contract */
+  --series-1: #2a78d6; /* phase: API contract → SignOff */
   --series-2: #eb6834; /* phase: dev → ready integration */
   --series-3: #1baf7a; /* cửa sổ FE integration */
   --studio: #4a3aa7; /* owner: mốc do Studio đặt ra */
@@ -115,6 +115,38 @@ h1 {
   border-color: var(--baseline);
 }
 
+/* ---------- phase tabs ---------- */
+
+.phase-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.phase-tab {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px 18px;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.phase-tab:hover {
+  border-color: var(--baseline);
+}
+
+.phase-tab.active {
+  background: var(--series-1);
+  border-color: var(--series-1);
+  color: #fff;
+}
+
 /* ---------- top: studio | backend ---------- */
 
 .top-grid {
@@ -124,7 +156,7 @@ h1 {
   margin-bottom: 14px;
 }
 
-@media (max-width: 800px) {
+@media (max-width: 860px) {
   .top-grid {
     grid-template-columns: 1fr;
   }
@@ -206,6 +238,111 @@ h1 {
   border-color: transparent;
 }
 
+.noe-field .noe-studio {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.noe-studio input {
+  accent-color: var(--series-1);
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.noe-label {
+  min-width: 32px;
+}
+
+/* ---------- mốc Studio động ---------- */
+
+.ms-editor {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.ms-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.ms-editor-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--studio);
+}
+
+.ms-rows {
+  display: grid;
+  gap: 6px;
+}
+
+.ms-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.ms-row input,
+.ms-row select {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--page);
+  color: var(--text-primary);
+  border-radius: 7px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 12.5px;
+}
+
+.ms-row select {
+  cursor: pointer;
+}
+
+.ms-row input:focus,
+.ms-row select:focus {
+  outline: 2px solid var(--studio);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.ms-row .ms-date {
+  width: auto;
+}
+
+.ms-row .btn-del {
+  justify-self: end;
+}
+
+/* Mốc hard code (API-CONTRACT): Loại khoá + không xoá */
+.ms-type-hard {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  border: 1px dashed var(--border);
+  border-radius: 7px;
+  padding: 6px 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--studio);
+  background: color-mix(in srgb, var(--studio) 7%, var(--page));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ---------- backend panel ---------- */
 
 .be-row {
@@ -241,6 +378,10 @@ h1 {
   );
 }
 
+.dot-fe {
+  background: var(--series-3);
+}
+
 .be-label {
   flex: 1;
   min-width: 130px;
@@ -273,6 +414,22 @@ h1 {
   font-weight: 500;
 }
 
+/* out-of-scope mini toggle trong panel Backend */
+.oos-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.oos-mini input {
+  margin: 0;
+}
+
 .be-verdict {
   margin-top: 14px;
   padding: 11px 13px;
@@ -292,32 +449,142 @@ h1 {
   color: var(--critical);
 }
 
-/* ---------- gantt ---------- */
+/* ---------- chart card ---------- */
 
 .chart-card {
   margin-bottom: 14px;
 }
 
-.gantt {
-  margin-top: 12px;
+.chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
 }
 
-.gantt-empty {
+.chart-head h2 {
+  margin: 0;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
+.logic-note {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ============================================================
+   SVAR React Gantt host — cần chiều cao tường minh (SVAR fill parent).
+   Toolbar (auto) trên, chart (flex:1) dưới. Editor tự là panel nổi.
+   ============================================================ */
+.svar-gantt-host {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 480px;
+  margin-top: 12px;
+  border: 1px solid var(--line, #e2e6ee);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.svar-gantt-host .wx-willow-theme,
+.svar-gantt-host .wx-willow-dark-theme {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.svar-gantt-host .wx-gantt {
+  flex: 1;
+  min-height: 0;
+}
+/* Cột "hôm nay" */
+.wx-gantt .ip-today-col {
+  background: color-mix(in srgb, var(--series-1, #2a78d6) 12%, transparent);
+}
+
+/* ============================================================
+   Gantt (gt-) — custom, no external lib. Mọi control ở panel
+   trái (luôn nhìn thấy): caret ▸ / tên / ＋ thêm con / ✕ xoá.
+   Phải = timeline: weekend, gridline, bar theo phase, nhãn mốc.
+   ============================================================ */
+
+.gt {
+  --gt-name-w: 196px;
+  --gt-start-w: 50px;
+  --gt-dur-w: 116px;
+  --gt-left-w: calc(var(--gt-name-w) + var(--gt-start-w) + var(--gt-dur-w));
+  --gt-row-h: 34px;
+  margin-top: 6px;
+}
+
+.gt-scroll {
+  overflow-x: auto;
+}
+
+.gt-grid {
+  min-width: 780px;
+}
+
+.gt-empty {
   color: var(--muted);
   font-size: 13px;
+  margin: 12px 0;
 }
 
-.gantt-grid {
+/* ----- header ----- */
+
+.gt-head {
+  display: flex;
+  align-items: stretch;
+}
+
+.gt-left-head {
+  width: var(--gt-left-w);
+  flex: none;
   display: grid;
-  grid-template-columns: 132px 1fr;
+  grid-template-columns: var(--gt-name-w) var(--gt-start-w) var(--gt-dur-w);
+  align-items: end;
+  gap: 0 6px;
+  padding: 0 8px 6px;
+  border-bottom: 1px solid var(--baseline);
 }
 
-.flag-area {
+.gt-col-name,
+.gt-col-start,
+.gt-col-dur {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.gt-col-start,
+.gt-col-dur {
+  text-align: right;
+}
+
+.gt-right-head {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.gt-flag-area {
   position: relative;
+  flex: none;
   transition: height 180ms ease;
 }
 
-.flag {
+.gt-flag {
   position: absolute;
   transform: translateX(-50%);
   white-space: nowrap;
@@ -331,9 +598,7 @@ h1 {
   z-index: 2;
 }
 
-/* Owner families — STUDIO = tím, BE = nền trắng + chấm màu khớp bar. */
-
-.flag-owner {
+.gt-flag-owner {
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.09em;
@@ -341,96 +606,305 @@ h1 {
   opacity: 0.8;
 }
 
-.flag.own-studio {
+/* Owner families — STUDIO = tím, BE = nền trắng + chấm phase, now = xám đứt. */
+.gt-flag.own-studio {
   color: var(--studio);
   border-color: color-mix(in srgb, var(--studio) 45%, transparent);
   background: color-mix(in srgb, var(--studio) 9%, var(--surface-1));
 }
 
-/* Ba mốc Studio phân cấp trong cùng một hue: KickOff nhạt → Deadline đặc. */
-.flag.flag-kickoff {
+.gt-flag.flag-kickoff {
   background: var(--surface-1);
 }
 
-.flag.flag-deadline {
+.gt-flag.flag-deadline {
   background: var(--studio);
   border-color: var(--studio);
   color: var(--studio-ink);
 }
 
-.flag.flag-desired,
-.flag.flag-desiredready {
+.gt-flag.flag-desired {
   background: color-mix(in srgb, var(--studio) 20%, var(--surface-1));
 }
 
-.flag.own-be {
+.gt-flag.own-be {
   color: var(--text-primary);
   border-color: var(--baseline);
   background: var(--surface-1);
 }
 
-.flag-today {
+.gt-flag.flag-today {
   color: var(--muted);
   border-style: dashed;
 }
 
-.gantt-names {
-  display: flex;
-  flex-direction: column;
+/* Chấm màu phase trước nhãn mốc BE, khớp bar bên dưới. */
+.gt-flag.flag-signoff::before,
+.gt-flag.flag-readyint::before,
+.gt-flag.flag-devdone::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  margin-right: 5px;
+  vertical-align: middle;
 }
 
-.gantt-name {
-  height: 44px;
+.gt-flag.flag-signoff::before {
+  background: var(--series-1);
+}
+
+.gt-flag.flag-readyint::before {
+  background: var(--series-2);
+}
+
+.gt-flag.flag-devdone::before {
+  background: var(--muted);
+}
+
+.gt-axis {
+  position: relative;
+  flex: 1;
+  min-height: 24px;
+  border-bottom: 1px solid var(--baseline);
+}
+
+.gt-tick {
+  position: absolute;
+  top: 7px;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ----- body ----- */
+
+.gt-body {
+  display: flex;
+  align-items: stretch;
+}
+
+.gt-left {
+  width: var(--gt-left-w);
+  flex: none;
+}
+
+.gt-lrow {
+  display: grid;
+  grid-template-columns: var(--gt-name-w) var(--gt-start-w) var(--gt-dur-w);
+  align-items: center;
+  gap: 0 6px;
+  height: var(--gt-row-h);
+  border-bottom: 1px solid var(--grid);
+}
+
+.gt-lrow.lrow-team {
+  background: color-mix(in srgb, var(--muted) 5%, transparent);
+}
+
+.gt-lrow.lrow-fe {
+  border-top: 1px dashed var(--baseline);
+  background: color-mix(in srgb, var(--series-3) 7%, transparent);
+}
+
+.gt-cell-name {
   display: flex;
   align-items: center;
-  padding-right: 12px;
+  gap: 6px;
+  min-width: 0;
+  padding-right: 6px;
+}
+
+.gt-caret {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 0;
+}
+
+.gt-caret:hover {
+  background: color-mix(in srgb, var(--muted) 14%, transparent);
+}
+
+.gt-caret.caret-empty {
+  color: var(--muted);
+  cursor: default;
+}
+
+.gt-name-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-primary);
+  border-radius: 6px;
+  padding: 4px 6px;
+  font: inherit;
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-secondary);
+}
+
+.gt-name-input:hover {
+  border-color: var(--border);
+  background: var(--page);
+}
+
+.gt-name-input:focus {
+  outline: 2px solid var(--series-1);
+  outline-offset: -1px;
+  background: var(--page);
+}
+
+.gt-row-actions {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.gt-btn-child,
+.gt-btn-del {
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+  line-height: 1;
+  padding: 3px 6px;
+  color: var(--muted);
+}
+
+.gt-btn-child {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.gt-btn-child:hover {
+  color: var(--series-1);
+  background: color-mix(in srgb, var(--series-1) 12%, transparent);
+}
+
+.gt-btn-del {
+  font-size: 14px;
+}
+
+.gt-btn-del:hover {
+  color: var(--critical);
+  background: color-mix(in srgb, var(--critical) 12%, transparent);
+}
+
+.gt-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  margin-left: 2px;
+}
+
+.gt-leaf-name {
+  min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  transition: opacity 180ms ease, height 180ms ease, margin 180ms ease;
+  font-size: 12.5px;
+  color: var(--text-secondary);
 }
 
-.fe-name {
-  border-top: 1px dashed var(--grid);
+.gt-cell-start {
+  text-align: right;
+  font-size: 11.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
-.gantt-plot {
+.gt-cell-dur {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  padding-right: 8px;
+  min-width: 0;
+}
+
+.gt-dur-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.gt-days-input {
+  width: 44px;
+  border: 1px solid var(--border);
+  background: var(--page);
+  color: var(--text-primary);
+  border-radius: 6px;
+  padding: 3px 5px;
+  font: inherit;
+  font-size: 12.5px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.gt-days-input:focus {
+  outline: 2px solid var(--series-1);
+  outline-offset: -1px;
+}
+
+.gt-days-unit {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.gt-dur-total {
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+.gt-dur-end {
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 34px;
+  text-align: right;
+}
+
+/* ----- plot ----- */
+
+.gt-right {
+  flex: 1;
+  min-width: 0;
   position: relative;
   border-left: 1px solid var(--baseline);
 }
 
-.gantt-row {
-  position: relative;
-  height: 44px;
-  transition: opacity 180ms ease, height 180ms ease, margin 180ms ease;
+.gt-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
 }
 
-.gantt-row:hover {
-  background: color-mix(in srgb, var(--muted) 8%, transparent);
-}
-
-.gantt-empty-row {
-  display: flex;
-  align-items: center;
-  padding-left: 10px;
-}
-
-.fe-row {
-  border-top: 1px dashed var(--grid);
-  background: color-mix(in srgb, var(--series-3) 7%, transparent);
-}
-
-.weekend {
+.gt-weekend {
   position: absolute;
   top: 0;
   bottom: 0;
   background: color-mix(in srgb, var(--muted) 8%, transparent);
 }
 
-.gridline {
+.gt-gridline {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -438,80 +912,70 @@ h1 {
   background: var(--grid);
 }
 
-.marker {
+.gt-marker {
   position: absolute;
-  top: -4px;
+  top: 0;
   bottom: 0;
   width: 0;
   border-left: 2px dashed;
   z-index: 1;
 }
 
-.marker-today {
+.gt-marker.own-now {
   border-left-style: dotted;
   border-color: var(--text-secondary);
 }
 
-/* Studio: nét đứt tím — mục tiêu, chưa phải ngày làm thật. */
-.marker.own-studio {
+.gt-marker.own-studio {
   border-left-style: dashed;
   border-color: color-mix(in srgb, var(--studio) 55%, transparent);
 }
 
-.marker.marker-kickoff {
+.gt-marker.marker-kickoff {
   border-left-width: 1px;
 }
 
-.marker.marker-deadline {
+.gt-marker.marker-deadline {
   border-color: var(--studio);
 }
 
-.marker-desiredready {
-  border-color: color-mix(in srgb, var(--studio) 55%, transparent);
-}
-
-/* BE: nét liền, màu trùng phase bar ngay bên dưới. */
-.marker.own-be {
+.gt-marker.own-be {
   border-left-style: solid;
 }
 
-.marker-signoff {
+.gt-marker.marker-signoff {
   border-color: color-mix(in srgb, var(--series-1) 70%, transparent);
 }
 
-.marker-readyint {
+.gt-marker.marker-readyint {
   border-color: color-mix(in srgb, var(--series-2) 70%, transparent);
 }
 
-.marker-devdone {
+.gt-marker.marker-devdone {
   border-color: color-mix(in srgb, var(--muted) 60%, transparent);
 }
 
-.flag-signoff::before,
-.flag-readyint::before,
-.flag-devdone::before {
-  content: '';
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-radius: 2px;
-  margin-right: 5px;
+.gt-brow {
+  position: relative;
+  height: var(--gt-row-h);
+  border-bottom: 1px solid transparent;
 }
 
-.flag-signoff::before {
-  background: var(--series-1);
+.gt-brow.brow-fe {
+  border-top: 1px dashed var(--baseline);
 }
 
-.flag-readyint::before {
-  background: var(--series-2);
+.gt-summary {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--text-secondary) 55%, transparent);
+  z-index: 2;
 }
 
-.flag-devdone::before {
-  background: var(--muted);
-}
-
-
-.seg-hit {
+.gt-seg-hit {
   position: absolute;
   top: 0;
   height: 100%;
@@ -520,9 +984,9 @@ h1 {
   z-index: 2;
 }
 
-.seg {
+.gt-seg {
   width: 100%;
-  height: 18px;
+  height: 16px;
   border-radius: 4px;
   box-shadow: 0 0 0 2px var(--surface-1);
 }
@@ -551,25 +1015,14 @@ h1 {
   overflow: hidden;
 }
 
-.seg-fe-label {
+.gt-seg-fe-label {
   font-size: 11px;
   font-weight: 700;
   color: rgba(0, 0, 0, 0.78);
   white-space: nowrap;
 }
 
-.end-label {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  margin-left: 9px;
-  font-size: 11.5px;
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-  z-index: 2;
-}
-
-.fe-none {
+.gt-fe-none {
   display: flex;
   align-items: center;
   height: 100%;
@@ -579,7 +1032,7 @@ h1 {
   font-weight: 600;
 }
 
-.tooltip {
+.gt-tooltip {
   position: absolute;
   z-index: 10;
   transform: translate(14px, -110%);
@@ -594,48 +1047,42 @@ h1 {
   white-space: nowrap;
 }
 
-.tooltip-flip {
+.gt-tooltip.flip {
   transform: translate(-14px, -110%) translateX(-100%);
 }
 
-.tooltip div:first-child {
+.gt-tooltip div:first-child {
   font-weight: 700;
 }
 
-.gantt-axis .axis-area {
-  position: relative;
-  height: 24px;
-  border-top: 1px solid var(--baseline);
-}
+/* ----- legend ----- */
 
-.tick {
-  position: absolute;
-  top: 6px;
-  transform: translateX(-50%);
-  font-size: 11px;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.legend {
+.gt-legend {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 10px 18px;
   margin-top: 16px;
   font-size: 12px;
   color: var(--text-secondary);
 }
 
-.legend-item {
+.gt-legend-item {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
-.chip {
+.gt-legend-item b {
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.gt-chip {
   width: 12px;
   height: 12px;
   border-radius: 3px;
+  flex: none;
 }
 
 .chip-contract {
@@ -658,14 +1105,13 @@ h1 {
   background: var(--series-3);
 }
 
-.legend-sep {
+.gt-legend-sep {
   width: 1px;
   align-self: stretch;
   background: var(--grid);
 }
 
-/* Mẫu nhãn mốc trong legend — cùng khuôn với pill thật trên biểu đồ. */
-.flag-key {
+.gt-key {
   width: 17px;
   height: 12px;
   border-radius: 999px;
@@ -683,216 +1129,78 @@ h1 {
   border-color: var(--baseline);
 }
 
-.legend-item b {
-  font-weight: 800;
-  letter-spacing: 0.05em;
-}
+/* ---------- team manager (xoá nhanh) ---------- */
 
-/* ---------- editable table ---------- */
-
-.summary-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-  margin-top: 10px;
-}
-
-.summary-table th {
-  text-align: left;
-  color: var(--muted);
-  font-size: 11.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--baseline);
-  white-space: nowrap;
-}
-
-.summary-table td {
-  padding: 5px 6px;
-  border-bottom: 1px solid var(--grid);
-  font-variant-numeric: tabular-nums;
-}
-
-.total-row td {
-  font-weight: 700;
-  border-bottom: none;
-  padding: 9px 10px;
-}
-
-.cell-input {
-  width: 100%;
-  min-width: 130px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--text-primary);
-  border-radius: 7px;
-  padding: 6px 8px;
-  font: inherit;
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-}
-
-.cell-name {
-  font-weight: 600;
-  min-width: 110px;
-}
-
-/* SignOff API: nhập số ngày kể từ KickOff, ngày suy ra hiển thị ngay bên cạnh. */
-.days-cell {
+.team-manager {
   display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--grid);
+}
+
+.tm-group {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+}
+
+.team-manager-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
   white-space: nowrap;
 }
 
-.cell-days {
-  width: 68px;
-  min-width: 0;
-  text-align: right;
-  font-weight: 600;
-  border-color: var(--border);
-}
-
-.days-unit {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.days-date {
+.btn-del-team {
+  background: var(--page);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font: inherit;
   font-size: 12.5px;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.days-max {
-  font-weight: 700;
-}
-
-.total-row .days-date {
   color: var(--text-primary);
-}
-
-.th-sub {
-  display: block;
-  margin-top: 2px;
-  font-size: 10.5px;
-  font-weight: 400;
-  text-transform: none;
-  letter-spacing: 0;
-  color: var(--muted);
-}
-
-.cell-input:hover:not(:disabled) {
-  border-color: var(--border);
-  background: var(--page);
-}
-
-.cell-input:focus {
-  outline: 2px solid var(--series-1);
-  outline-offset: -1px;
-  background: var(--page);
-}
-
-.cell-input:disabled {
-  opacity: 0.4;
-}
-
-.cell-invalid .cell-input {
-  border-color: var(--critical);
-  background: color-mix(in srgb, var(--critical) 7%, transparent);
-}
-
-.oos-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  margin-left: 10px;
-  font-size: 11px;
-  font-weight: 500;
-  text-transform: none;
-  letter-spacing: 0;
-  color: var(--muted);
   cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+  white-space: nowrap;
 }
 
-.oos-toggle input {
-  accent-color: var(--series-1);
-  margin: 0;
+.btn-del-team:hover {
+  border-color: var(--critical);
+  background: color-mix(in srgb, var(--critical) 10%, transparent);
+  color: var(--critical);
 }
 
-.th-del,
-.td-del {
-  width: 64px;
-  text-align: center;
+.btn-del-sub {
+  font-size: 12px;
+  padding: 4px 8px;
 }
 
-.row-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+.tm-parent {
+  color: var(--text-secondary);
+  font-weight: 500;
 }
+
+/* ---------- shared buttons ---------- */
 
 .btn-add-child {
   background: var(--page);
   border: 1px dashed var(--baseline);
   border-radius: 6px;
   color: var(--text-secondary);
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
-  padding: 2px 7px;
+  padding: 5px 10px;
   transition: border-color 120ms ease, color 120ms ease;
 }
 
 .btn-add-child:hover {
   border-color: var(--series-1);
   color: var(--series-1);
-}
-
-.name-cell {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.child-indent {
-  color: var(--muted);
-  font-size: 14px;
-  user-select: none;
-}
-
-.cell-child {
-  min-width: 90px;
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-.row-child {
-  background: color-mix(in srgb, var(--muted) 4%, transparent);
-}
-
-.noe-field .noe-studio {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 0;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.noe-studio input {
-  accent-color: var(--series-1);
-  width: 18px;
-  height: 18px;
-  margin: 0;
-}
-
-.noe-label {
-  min-width: 32px;
 }
 
 .btn-del {
@@ -912,7 +1220,6 @@ h1 {
 }
 
 .btn-add {
-  margin-top: 12px;
   background: none;
   border: 1px dashed var(--baseline);
   border-radius: 8px;
@@ -927,43 +1234,6 @@ h1 {
 .btn-add:hover {
   color: var(--text-primary);
   border-color: var(--text-secondary);
-}
-
-.logic-note {
-  margin: 12px 0 0;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-/* ---------- phase tabs ---------- */
-
-.phase-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-.phase-tab {
-  background: var(--surface-1);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 9px 18px;
-  font: inherit;
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
-}
-
-.phase-tab:hover {
-  border-color: var(--baseline);
-}
-
-.phase-tab.active {
-  background: var(--series-1);
-  border-color: var(--series-1);
-  color: #fff;
 }
 
 /* ---------- index page ---------- */
@@ -997,6 +1267,8 @@ h1 {
   display: grid;
   gap: 16px;
   text-align: left;
+  max-width: 420px;
+  margin: 0 auto;
 }
 
 .index-form .field input {
@@ -1049,37 +1321,15 @@ h1 {
   padding: 20px;
 }
 
-.recent-projects ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.btn-link {
-  background: var(--page);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 9px 12px;
-  font: inherit;
-  font-size: 13.5px;
-  color: var(--text-primary);
-  cursor: pointer;
-  text-align: left;
-  width: 100%;
-  transition: border-color 150ms ease, background 150ms ease;
-}
-
-.btn-link:hover {
-  border-color: var(--baseline);
-  background: var(--surface-1);
-}
-
 .table-wrap {
   overflow-x: auto;
   margin-top: 10px;
+}
+
+.summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
 }
 
 .project-table {
@@ -1125,254 +1375,4 @@ h1 {
 .project-noe {
   font-weight: 700;
   color: var(--text-secondary);
-}
-
-/* ---------- responsive ---------- */
-
-@media (max-width: 640px) {
-  .gantt-grid {
-    grid-template-columns: 92px 1fr;
-  }
-
-  .gantt-name {
-    font-size: 11.5px;
-  }
-
-  .edit-table {
-    display: block;
-    overflow-x: auto;
-  }
-}
-
-/* ============================================================
-   SVAR React Gantt — MS Project schedule (Lịch Backend)
-   Left grid: Task Name / Start / Dur · Right: bars + markers
-   ============================================================ */
-.svar-wrap {
-  height: 62vh;
-  min-height: 480px;
-  width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-}
-.svar-wrap > div,
-.svar-wrap .wx-willow,
-.svar-wrap .wx-gantt {
-  height: 100%;
-}
-
-/* taskbar colors by phase. SVAR resets unknown task types to 'task', so we hook
-   the STABLE data-id suffix instead of a type class. SVAR paints the bar body
-   from --wx-gantt-task-color (inner .wx-segment) and progress from
-   --wx-gantt-task-fill-color; custom props inherit down, so setting them on the
-   bar node colors every inner paint element (no !important needed). */
-.wx-gantt .wx-bar[data-id$="~contract"] {
-  --wx-gantt-task-color: var(--series-1);
-  --wx-gantt-task-fill-color: color-mix(in srgb, var(--series-1) 82%, #000);
-  --wx-gantt-task-border: 1px solid color-mix(in srgb, var(--series-1) 65%, #000);
-  --wx-gantt-task-border-color: color-mix(in srgb, var(--series-1) 65%, #000);
-  --wx-gantt-task-font-color: #fff;
-}
-.wx-gantt .wx-bar[data-id$="~dev"] {
-  --wx-gantt-task-color: var(--series-2);
-  --wx-gantt-task-fill-color: color-mix(in srgb, var(--series-2) 82%, #000);
-  --wx-gantt-task-border: 1px solid color-mix(in srgb, var(--series-2) 65%, #000);
-  --wx-gantt-task-border-color: color-mix(in srgb, var(--series-2) 65%, #000);
-  --wx-gantt-task-font-color: #fff;
-}
-.wx-gantt .wx-bar[data-id$="~done"] {
-  --wx-gantt-task-color: color-mix(in srgb, var(--muted) 42%, var(--surface-1));
-  --wx-gantt-task-fill-color: color-mix(in srgb, var(--muted) 55%, var(--surface-1));
-  --wx-gantt-task-border: 1px solid color-mix(in srgb, var(--muted) 55%, #000);
-  --wx-gantt-task-border-color: color-mix(in srgb, var(--muted) 55%, #000);
-  --wx-gantt-task-font-color: var(--text-primary);
-}
-/* diagonal hatch marks the derived "done" buffer */
-.wx-gantt .wx-bar[data-id$="~done"] .wx-segment {
-  background-image: repeating-linear-gradient(
-    45deg,
-    transparent 0 4px,
-    color-mix(in srgb, #000 9%, transparent) 4px 8px
-  );
-}
-.wx-gantt .wx-bar[data-id=":fe"] {
-  --wx-gantt-task-color: var(--series-3);
-  --wx-gantt-task-fill-color: color-mix(in srgb, var(--series-3) 82%, #000);
-  --wx-gantt-task-border: 1px solid color-mix(in srgb, var(--series-3) 65%, #000);
-  --wx-gantt-task-border-color: color-mix(in srgb, var(--series-3) 65%, #000);
-  --wx-gantt-task-font-color: #fff;
-}
-/* Level-1 project bracket (root summary) — đậm hơn team */
-.wx-gantt .wx-bar[data-id=":root"] {
-  --wx-gantt-summary-color: var(--text-secondary);
-  --wx-gantt-summary-border-color: var(--text-secondary);
-}
-
-/* Studio milestones — violet diamonds (type 'milestone', hàng 🎯 Mốc Studio) */
-.wx-gantt {
-  --wx-gantt-milestone-color: var(--studio);
-  --wx-gantt-milestone-border-color: color-mix(in srgb, var(--studio) 60%, #000);
-}
-.wx-gantt .wx-bar.wx-milestone .wx-text-out {
-  color: var(--studio);
-  font-weight: 600;
-}
-
-/* weekend highlight (highlightTime) */
-.wx-gantt .wx-weekend {
-  background: color-mix(in srgb, var(--muted) 9%, transparent) !important;
-}
-
-/* Cột xoá ✕ trong lưới — hiện như nút xoá, đỏ khi hover */
-.svar-wrap .wx-gantt .wx-cell[data-col-id=':del'],
-.svar-wrap .wx-gantt .wx-cell[data-col-id='del'] {
-  cursor: pointer;
-  color: var(--text-secondary);
-  font-weight: 700;
-  transition: color 0.15s;
-  user-select: none;
-}
-.svar-wrap .wx-gantt .wx-cell[data-col-id=':del']:hover,
-.svar-wrap .wx-gantt .wx-cell[data-col-id='del']:hover {
-  color: #e5484d;
-}
-.svar-del {
-  display: inline-block;
-  width: 100%;
-}
-
-/* chart card header: title + Thêm team button trên một hàng */
-.chart-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 10px;
-}
-.chart-head h2 {
-  margin: 0;
-}
-
-/* out-of-scope mini toggle trong panel Backend */
-.oos-mini {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: auto;
-  font-size: 11px;
-  color: var(--text-secondary);
-  white-space: nowrap;
-  cursor: pointer;
-}
-.oos-mini input {
-  margin: 0;
-}
-
-/* ---------- mốc Studio động ---------- */
-.ms-editor {
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-}
-.ms-editor-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-.ms-editor-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--studio);
-}
-.ms-rows {
-  display: grid;
-  gap: 6px;
-}
-.ms-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto auto;
-  gap: 6px;
-  align-items: center;
-}
-.ms-row input,
-.ms-row select {
-  width: 100%;
-  border: 1px solid var(--border);
-  background: var(--page);
-  color: var(--text-primary);
-  border-radius: 7px;
-  padding: 6px 8px;
-  font: inherit;
-  font-size: 12.5px;
-}
-.ms-row select {
-  cursor: pointer;
-}
-.ms-row input:focus,
-.ms-row select:focus {
-  outline: 2px solid var(--studio);
-  outline-offset: 1px;
-  border-color: transparent;
-}
-.ms-row .ms-date {
-  width: auto;
-}
-.ms-row .btn-del {
-  justify-self: end;
-}
-
-.team-manager {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--grid);
-}
-
-.team-manager-label {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.btn-del-team {
-  background: var(--page);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 5px 10px;
-  font: inherit;
-  font-size: 12.5px;
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
-}
-
-.btn-del-team:hover {
-  border-color: var(--critical);
-  background: color-mix(in srgb, var(--critical) 10%, transparent);
-  color: var(--critical);
-}
-
-/* Mốc hard code (API-CONTRACT): Loại khoá + không xoá */
-.ms-type-hard {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-  border: 1px dashed var(--border);
-  border-radius: 7px;
-  padding: 6px 8px;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--studio);
-  background: color-mix(in srgb, var(--studio) 7%, var(--page));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }

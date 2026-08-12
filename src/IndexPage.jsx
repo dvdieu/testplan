@@ -3,14 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { fmtFull } from './date.js';
 import { listProjects } from './storage.js';
 
-function slugify(name) {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-');
-}
-
 export default function IndexPage() {
   const navigate = useNavigate();
   const [name, setName] = useState('');
@@ -24,9 +16,11 @@ export default function IndexPage() {
   }, []);
 
   const enterProject = projectName => {
-    const slug = slugify(projectName);
-    if (!slug) return;
-    navigate(`/plan/${encodeURIComponent(slug)}`, { state: { projectName } });
+    // Danh tính = tên chính xác (không hạ chữ). encodeURIComponent lo phần URL-safe.
+    // Trước đây slugify hạ "DemoGame"→"demogame" → PlannerPage load nhầm key → seed trùng.
+    const clean = String(projectName || '').trim();
+    if (!clean) return;
+    navigate(`/plan/${encodeURIComponent(clean)}`);
   };
 
   const handleSubmit = e => {
@@ -78,13 +72,16 @@ export default function IndexPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {projects.map(p => (
+                  {projects.map((raw, i) => {
+                    // Chấp nhận cả string (tên) lẫn object — không để entry hỏng làm trắng trang
+                    const p = typeof raw === 'string' ? { name: raw } : raw || {};
+                    return (
                     <tr
-                      key={slugify(p.name)}
+                      key={`${p.name || 'proj'}-${i}`}
                       className="project-row"
                       onClick={() => enterProject(p.name)}
                     >
-                      <td className="project-name">{p.name}</td>
+                      <td className="project-name">{p.name || '—'}</td>
                       <td>{p.gameName || '—'}</td>
                       <td>{fmtFull(p.startDate)}</td>
                       <td>{fmtFull(p.desiredApiDoc)}</td>
@@ -93,7 +90,8 @@ export default function IndexPage() {
                       <td>{p.pic || '—'}</td>
                       <td className="project-noe">{p.noe ? 'YES' : 'NO'}</td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

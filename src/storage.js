@@ -13,9 +13,35 @@ export async function listProjects() {
       console.warn('KV list failed, falling back to localStorage', err);
     }
   }
+  // localStorage fallback: danh sách lưu dạng mảng TÊN (string). IndexPage cần OBJECT
+  // (name, gameName, ngày…) → đọc plan mỗi dự án dựng object tóm tắt. Tránh crash slugify.
   try {
     const raw = localStorage.getItem(LS_PROJECTS_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const entries = raw ? JSON.parse(raw) : [];
+    return entries
+      .map(entry => {
+        const name = typeof entry === 'string' ? entry : entry && entry.name;
+        if (!name) return null;
+        let plan = null;
+        try {
+          const container = JSON.parse(localStorage.getItem(`integration-planner-${name}`) || '{}');
+          // container theo phase (engine/support/cheat); lấy phase đầu có dữ liệu
+          plan = PHASES.map(ph => container[ph]).find(Boolean) || null;
+        } catch {
+          /* plan hỏng → để trống */
+        }
+        return {
+          name,
+          gameName: (plan && plan.gameName) || '',
+          startDate: (plan && plan.startDate) || '',
+          desiredApiDoc: (plan && plan.desiredApiDoc) || '',
+          desiredReady: (plan && plan.desiredReady) || '',
+          studioDeadline: (plan && plan.studioDeadline) || '',
+          pic: (plan && plan.pic) || '',
+          noe: !!(plan && plan.noe),
+        };
+      })
+      .filter(Boolean);
   } catch {
     return [];
   }
@@ -42,7 +68,11 @@ export async function loadPlan(name, phase) {
 }
 
 export async function savePlan(name, phase, plan) {
-  const projects = new Set(await listProjects());
+  // listProjects() trả OBJECT tóm tắt → rút TÊN để index luôn là mảng string thuần.
+  const existing = await listProjects();
+  const projects = new Set(
+    existing.map(p => (typeof p === 'string' ? p : p && p.name)).filter(Boolean),
+  );
   projects.add(name);
 
   if (KV_ENABLED) {

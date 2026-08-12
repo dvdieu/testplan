@@ -1,492 +1,238 @@
-import { useRef, useState } from 'react';
-import {
-  addDaysStr,
-  diffDays,
-  diffWkd,
-  fmtFull,
-  fmtShort,
-  maxDate,
-  minDate,
-  parseDate,
-  todayStr,
-} from './date.js';
+// Biểu đồ dựng trên SVAR React Gantt (@svar-ui/react-gantt) — dùng đúng như demo BasicInit:
+//   <Gantt tasks links scales /> + Toolbar / ContextMenu / Editor (thêm/sửa/xoá NATIVE).
+// Model của app (day-count WKD) vẫn là nguồn sự thật: seed SVAR từ backend đã tính, và ánh xạ
+// mọi thao tác native (xoá/đổi tên/kéo giãn/thêm) NGƯỢC lại model qua api.intercept / api.on.
+import { useMemo, useState } from 'react';
+import { Gantt as SvarGantt, Willow, Toolbar, ContextMenu, Editor } from '@svar-ui/react-gantt';
+import '@svar-ui/react-gantt/all.css';
+import { addDaysStr, diffWkd, maxDate, minDate, parseDate, todayStr } from './date.js';
+import { num } from './model.js';
 
-const num = v => Math.max(0, Math.round(Number(v) || 0));
+const D = s => (s ? new Date(parseDate(s)) : null); // 'YYYY-MM-DD' → Date (UTC-noon, an toàn timezone)
+const toStr = dt => {
+  if (!dt) return null;
+  const d = new Date(dt);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+const fmtDMY = dt => { if (!dt) return ''; const d = new Date(dt); return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`; };
 
-// Mỗi team = 1 task cha (summary). 3 phase = 3 task con 1 cấp, mỗi con 1 bar + 1 Duration.
-// Duration nhập bằng số ngày làm việc; Start suy ra theo chuỗi (xem resolveRows ở PlannerPage).
+// Cột lưới: chỉ hiển thị WKD (số ngày làm việc), KHÔNG dùng Duration mặc định của SVAR (đếm ngày lịch,
+// gồm cả cuối tuần). WKD sửa được inline (chỉ trên hàng phase) → ánh xạ về model qua update-task.
+const COLUMNS = [
+  { id: 'text', header: 'Task', flexgrow: 2 },
+  { id: 'start', header: 'Bắt đầu', width: 112, align: 'center', template: v => fmtDMY(v) },
+  {
+    id: 'wkd',
+    header: 'WKD',
+    width: 76,
+    align: 'center',
+    editor: row => (row && row.type === 'task' ? 'text' : null),
+    template: v => (v == null || v === '' ? '' : String(v)),
+  },
+  { id: 'add-task', width: 44 },
+];
+
+const PHASE_FIELD = { contract: 'contractDays', dev: 'readyDays', done: 'doneDays' };
+
+// SVAR scale `format` phải là HÀM (chuỗi bị in nguyên văn — SVAR chỉ hiểu cú pháp %F/%j riêng).
+// Nhận (cellStart, cellEnd) là Date → trả nhãn cột lịch.
+const MONTHS = [
+  'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
+  'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12',
+];
+const fmtMonth = d => { const x = new Date(d); return `${MONTHS[x.getMonth()]} ${x.getFullYear()}`; };
+const fmtDay = d => String(new Date(d).getDate());
+
+// Giải mã id task SVAR → thực thể trong model.
+function classify(id) {
+  const s = String(id);
+  if (s.startsWith('grp::')) return { kind: 'group' };
+  if (s.startsWith('ms::')) {
+    const rest = s.slice(4);
+    if (rest === 'kickoff') return { kind: 'kickoff' };
+    if (rest === 'deadline') return { kind: 'deadline' };
+    return { kind: 'milestone', msId: rest };
+  }
+  const i = s.indexOf('::');
+  if (i >= 0) return { kind: 'phase', teamId: s.slice(0, i), phase: s.slice(i + 2) };
+  return { kind: 'team', teamId: s };
+}
+
+// 3 phase của 1 team (giống model.resolveRows): contract | dev | done, kèm mốc from/to.
 function teamPhases(r, plan, feContract, itemLabel) {
   const { startDate, oos } = plan;
   const devFrom = oos.signoff ? startDate : feContract || r.contract || startDate;
   return [
-    {
-      key: 'contract',
-      field: 'contractDays',
-      name: `${itemLabel} → SignOff`,
-      phase: 'contract',
-      from: startDate,
-      to: r.contract,
-      oos: oos.signoff,
-    },
-    {
-      key: 'dev',
-      field: 'readyDays',
-      name: 'Ready Integration',
-      phase: 'dev',
-      from: devFrom,
-      to: r.ready,
-      oos: oos.ready,
-    },
-    {
-      key: 'done',
-      field: 'doneDays',
-      name: 'Development Done',
-      phase: 'enddev',
-      from: r.ready,
-      to: r.done,
-      oos: oos.done,
-    },
+    { key: 'contract', field: 'contractDays', name: `${itemLabel} → SignOff`, from: startDate, to: r.contract, oos: oos.signoff },
+    { key: 'dev', field: 'readyDays', name: 'Ready Integration', from: devFrom, to: r.ready, oos: oos.ready },
+    { key: 'done', field: 'doneDays', name: 'Development Done', from: r.ready, to: r.done, oos: oos.done },
+  ].filter(p => !p.oos && p.from && p.to && parseDate(p.to) > parseDate(p.from));
+}
+
+// plan + backend → { tasks, links, scales, start, end } cho SVAR.
+function buildData(plan, backend, itemLabel) {
+  const { startDate, studioDeadline, milestones = [] } = plan;
+  const { rows, feContract } = backend;
+  const tasks = [];
+  const links = [];
+  const dates = [startDate, studioDeadline, todayStr()];
+
+  // Nhóm mốc Studio (tím) = KickOff + các mốc động + Deadline → các milestone (kim cương).
+  tasks.push({ id: 'grp::studio', text: '🎯 Mốc Studio (mục tiêu)', type: 'summary', open: true });
+  if (startDate) {
+    tasks.push({ id: 'ms::kickoff', parent: 'grp::studio', text: 'KickOff', type: 'milestone', start: D(startDate) });
+  }
+  milestones.filter(m => m.date).forEach(m => {
+    tasks.push({
+      id: `ms::${m.id}`,
+      parent: 'grp::studio',
+      text: `${m.type} · ${m.status}${m.hard ? ' 🔒' : ''}`,
+      type: 'milestone',
+      start: D(m.date),
+    });
+    dates.push(m.date);
+  });
+  if (studioDeadline) {
+    tasks.push({ id: 'ms::deadline', parent: 'grp::studio', text: 'Deadline Studio', type: 'milestone', start: D(studioDeadline) });
+  }
+
+  // Mỗi team = summary; 3 phase = task con + link e2s (contract → dev → done).
+  rows.forEach(r => {
+    tasks.push({ id: r.id, parent: r.parentId || 0, text: r.name || 'Team ?', type: 'summary', open: true });
+    const phases = teamPhases(r, plan, feContract, itemLabel);
+    phases.forEach(p => {
+      tasks.push({
+        id: `${r.id}::${p.key}`,
+        parent: r.id,
+        text: p.name,
+        type: 'task',
+        start: D(p.from),
+        end: D(p.to),
+        progress: 0,
+        wkd: num(r[p.field]), // WKD gốc từ model (đúng số user nhập), không phải ngày lịch
+      });
+      dates.push(p.from, p.to);
+    });
+    for (let k = 1; k < phases.length; k++) {
+      links.push({ id: `${r.id}:l${k}`, source: `${r.id}::${phases[k - 1].key}`, target: `${r.id}::${phases[k].key}`, type: 'e2s' });
+    }
+  });
+
+  const lo = minDate(...dates.filter(Boolean));
+  const hi = maxDate(...dates.filter(Boolean));
+  const start = lo ? D(addDaysStr(lo, -3)) : D(todayStr());
+  const end = hi ? D(addDaysStr(hi, 5)) : D(addDaysStr(todayStr(), 30));
+  const scales = [
+    { unit: 'month', step: 1, format: fmtMonth },
+    { unit: 'day', step: 1, format: fmtDay },
   ];
+  return { tasks, links, scales, start, end };
 }
 
 export default function Gantt({
   plan,
-  rows,
-  feContract,
-  feReady,
-  projectDone,
+  backend,
   itemLabel = 'API',
-  desiredLabel = 'SignOff mong muốn',
   setRow,
-  addTeam,
   addChild,
+  addTeam,
   removeTeam,
   setField,
+  setMilestone,
+  removeMilestone,
 }) {
-  const plotRef = useRef(null);
-  const [tip, setTip] = useState(null);
-  const [collapsed, setCollapsed] = useState(() => new Set());
+  const [api, setApi] = useState(null);
   const today = todayStr();
 
-  const { startDate, desiredApiDoc, desiredReady, studioDeadline, oos } = plan;
+  const data = useMemo(() => buildData(plan, backend, itemLabel), [plan, backend, itemLabel]);
+  // Remount SVAR khi cấu trúc/ngày đổi từ các panel khác → chart seed lại từ model.
+  const sig = useMemo(() => JSON.stringify(data.tasks) + '|' + JSON.stringify(data.links), [data]);
 
-  const toggle = id =>
-    setCollapsed(s => {
-      const n = new Set(s);
-      n.has(id) ? n.delete(id) : n.add(id);
-      return n;
+  // init chạy mỗi lần (re)mount → closure luôn ôm props mới nhất (sig đổi ⇒ remount).
+  const init = a => {
+    // XOÁ: chặn default của SVAR (return false) rồi tự xoá trong model → remount phản ánh.
+    a.intercept('delete-task', ({ id }) => {
+      const c = classify(id);
+      if (c.kind === 'group' || c.kind === 'kickoff' || c.kind === 'deadline' || c.kind === 'phase') return false;
+      if (c.kind === 'milestone') {
+        const m = (plan.milestones || []).find(x => x.id === c.msId);
+        if (m && m.hard) return false; // mốc hard code: không xoá
+        removeMilestone && removeMilestone(c.msId);
+        return false;
+      }
+      if (c.kind === 'team') {
+        const target = backend.rows.find(r => r.id === c.teamId);
+        const roots = backend.rows.filter(r => !r.parentId);
+        if (target && !target.parentId && roots.length <= 1) return false; // giữ ≥1 team gốc
+        removeTeam && removeTeam(c.teamId);
+        return false;
+      }
+      return false;
     });
-  const setDays = (id, field) => e =>
-    setRow(id, field, e.target.value === '' ? '' : num(e.target.value));
 
-  // Flatten teams (cha) + their phases (con 1 cấp) into an ordered schedule.
-  const schedule = [];
-  rows.forEach(r => {
-    const depth = r.parentId ? 1 : 0;
-    const phases = teamPhases(r, plan, feContract, itemLabel).filter(
-      p => !p.oos && p.from && p.to && parseDate(p.to) > parseDate(p.from),
-    );
-    const start = minDate(...phases.map(p => p.from)) || startDate;
-    const end = maxDate(...phases.map(p => p.to));
-    schedule.push({
-      kind: 'team',
-      id: r.id,
-      depth,
-      name: r.name || 'Team ?',
-      start,
-      end,
-      dur: start && end ? diffWkd(start, end) : 0,
-      hasKids: phases.length > 0,
-      collapsed: collapsed.has(r.id),
+    // SỬA (đổi tên / kéo giãn bar / dời milestone) → mirror vào model sau khi SVAR áp dụng.
+    a.on('update-task', ({ id, task }) => {
+      if (!task) return;
+      const c = classify(id);
+      if (c.kind === 'team' && task.text != null) {
+        setRow && setRow(c.teamId, 'name', task.text);
+      } else if (c.kind === 'phase') {
+        const field = PHASE_FIELD[c.phase];
+        if (field && task.wkd != null && task.wkd !== '') {
+          // Sửa trực tiếp ô WKD trong lưới → set số ngày làm việc.
+          setRow && setRow(c.teamId, field, num(task.wkd));
+        } else if (field && (task.start || task.end)) {
+          // Kéo giãn bar → quy ngược ra WKD (diffWkd bỏ cuối tuần).
+          const cur = a.getTask(id) || {};
+          const st = toStr(task.start || cur.start);
+          const en = toStr(task.end || cur.end);
+          if (st && en) setRow && setRow(c.teamId, field, num(diffWkd(st, en)));
+        }
+      } else if (c.kind === 'milestone' && task.start) {
+        setMilestone && setMilestone(c.msId, 'date', toStr(task.start));
+      } else if (c.kind === 'kickoff' && task.start) {
+        setField && setField('startDate', toStr(task.start));
+      } else if (c.kind === 'deadline' && task.start) {
+        setField && setField('studioDeadline', toStr(task.start));
+      }
     });
-    if (!collapsed.has(r.id)) {
-      phases.forEach(p =>
-        schedule.push({
-          kind: 'leaf',
-          id: `${r.id}-${p.key}`,
-          teamId: r.id,
-          depth: depth + 1,
-          name: p.name,
-          field: p.field,
-          days: r[p.field],
-          from: p.from,
-          to: p.to,
-          phase: p.phase,
-          start: p.from,
-          dur: diffWkd(p.from, p.to),
-        }),
-      );
-    }
-  });
 
-  const feWindow =
-    !oos.ready && feReady && studioDeadline && parseDate(studioDeadline) > parseDate(feReady)
-      ? { from: feReady, to: studioDeadline }
-      : null;
-  const showFeRow = !oos.ready;
-  if (showFeRow) {
-    schedule.push({
-      kind: 'fe',
-      id: '__fe__',
-      depth: 0,
-      name: 'FE Integration',
-      start: feWindow ? feWindow.from : feReady,
-      end: feWindow ? feWindow.to : null,
-      dur: feWindow ? diffWkd(feWindow.from, feWindow.to) : 0,
-      window: feWindow,
+    // THÊM task từ SVAR → định tuyến sang addChild / addTeam của model.
+    a.on('add-task', ({ target }) => {
+      const c = target != null ? classify(target) : { kind: 'team' };
+      if (c.kind === 'team' && c.teamId) addChild && addChild(c.teamId);
+      else if (c.kind === 'phase' && c.teamId) addChild && addChild(c.teamId);
+      else addTeam && addTeam();
     });
-  }
 
-  // X domain — only dates that actually render.
-  const visibleDates = [startDate, studioDeadline, today];
-  if (!oos.signoff) visibleDates.push(desiredApiDoc, feContract);
-  if (!oos.ready) visibleDates.push(desiredReady, feReady);
-  if (!oos.done) visibleDates.push(projectDone);
-  schedule.forEach(row => {
-    if (row.kind === 'leaf') visibleDates.push(row.from, row.to);
-    else visibleDates.push(row.start, row.end);
-  });
-
-  const lo = minDate(...visibleDates);
-  const hi = maxDate(...visibleDates);
-  if (!lo || !hi) return <p className="gantt-empty">Nhập ngày để hiển thị biểu đồ.</p>;
-
-  const min = addDaysStr(lo, -2);
-  const total = Math.max(diffDays(min, addDaysStr(hi, 4)), 1);
-  const pos = d => (diffDays(min, d) / total) * 100;
-
-  const step = [1, 2, 3, 5, 7, 14, 28].find(s => total / s <= 11) || 56;
-  const ticks = [];
-  for (let i = 0; i <= total; i += step) ticks.push(addDaysStr(min, i));
-
-  const weekends = [];
-  for (let i = 0; i <= total; i++) {
-    if (new Date(parseDate(addDaysStr(min, i))).getUTCDay() === 6) weekends.push(i);
-  }
-
-  // owner drives flag color: 'studio' = tím (mục tiêu), 'be' = trắng + chấm khớp bar, 'now' = xám.
-  const markers = [
-    startDate && { date: startDate, label: 'KickOff (M1)', cls: 'kickoff', owner: 'studio' },
-    { date: today, label: 'Hôm nay', cls: 'today', owner: 'now' },
-    !oos.signoff &&
-      feContract && { date: feContract, label: `${itemLabel} (M2)`, cls: 'signoff', owner: 'be' },
-    !oos.ready &&
-      feReady && {
-        date: feReady,
-        label: 'Ready Integration (M3)',
-        cls: 'readyint',
-        owner: 'be',
-      },
-    !oos.done &&
-      projectDone && { date: projectDone, label: 'Dev Done (M4)', cls: 'devdone', owner: 'be' },
-    !oos.signoff &&
-      desiredApiDoc && { date: desiredApiDoc, label: desiredLabel, cls: 'desired', owner: 'studio' },
-    !oos.ready &&
-      desiredReady && {
-        date: desiredReady,
-        label: 'Integration mong muốn',
-        cls: 'desiredready',
-        owner: 'studio',
-      },
-    studioDeadline && {
-      date: studioDeadline,
-      label: 'Deadline Studio',
-      cls: 'deadline',
-      owner: 'studio',
-    },
-  ]
-    .filter(Boolean)
-    .sort((a, b) => parseDate(a.date) - parseDate(b.date));
-
-  const FLAG_STEP = 26;
-  const flagged = markers.map((m, i) => ({ ...m, lv: i }));
-  const flagAreaH = markers.length * FLAG_STEP + 6;
-
-  const showTip = (e, lines) => {
-    const rect = plotRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    setTip({ x, y: e.clientY - rect.top, lines, flip: x / rect.width > 0.62 });
+    setApi(a);
   };
 
+  // Tô sáng cột "hôm nay".
+  const highlightTime = (date, unit) => (unit === 'day' && toStr(date) === today ? 'ip-today-col' : '');
+
   return (
-    <div className="msp">
-      <div className="msp-toolbar">
-        <div className="oos-group">
-          <span className="oos-group-label">Ngoài scope:</span>
-          <label className="oos-toggle">
-            <input
-              type="checkbox"
-              checked={oos.signoff}
-              onChange={e => setField('oos', { ...oos, signoff: e.target.checked })}
-            />
-            {itemLabel}
-          </label>
-          <label className="oos-toggle">
-            <input
-              type="checkbox"
-              checked={oos.ready}
-              onChange={e => setField('oos', { ...oos, ready: e.target.checked })}
-            />
-            Ready Integration
-          </label>
-          <label className="oos-toggle">
-            <input
-              type="checkbox"
-              checked={oos.done}
-              onChange={e => setField('oos', { ...oos, done: e.target.checked })}
-            />
-            Development Done
-          </label>
-        </div>
-        <button className="btn-add" onClick={addTeam}>
-          + Thêm team
-        </button>
+    <Willow>
+      <div className="svar-gantt-host">
+        {api && <Toolbar api={api} />}
+        <ContextMenu api={api}>
+          <SvarGantt
+            key={sig}
+            init={init}
+            tasks={data.tasks}
+            links={data.links}
+            scales={data.scales}
+            columns={COLUMNS}
+            start={data.start}
+            end={data.end}
+            lengthUnit="day"
+            cellWidth={34}
+            cellHeight={34}
+            highlightTime={highlightTime}
+          />
+        </ContextMenu>
+        {api && <Editor api={api} />}
       </div>
-
-      <div className="msp-scroll">
-        <div className="msp-grid">
-          {/* ---- header band: column titles (left) + flags & axis (right) ---- */}
-          <div className="msp-head" style={{ height: flagAreaH + 28 + 'px' }}>
-            <div className="msp-left-head">
-              <span className="col-name">Task Name</span>
-              <span className="col-start">Start</span>
-              <span className="col-dur">Duration</span>
-            </div>
-            <div className="msp-right-head">
-              <div className="flag-area" style={{ height: flagAreaH + 'px' }}>
-                {flagged.map(m => (
-                  <span
-                    key={m.cls}
-                    className={`flag flag-${m.cls} own-${m.owner}`}
-                    style={{ left: pos(m.date) + '%', top: m.lv * FLAG_STEP + 'px' }}
-                  >
-                    {m.owner !== 'now' && (
-                      <b className="flag-owner">{m.owner === 'studio' ? 'STUDIO' : 'BE'}</b>
-                    )}
-                    {m.label} · {fmtShort(m.date)}
-                  </span>
-                ))}
-              </div>
-              <div className="axis-area">
-                {ticks.map(t => (
-                  <span key={t} className="tick" style={{ left: pos(t) + '%' }}>
-                    {fmtShort(t)}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* ---- body: task list (left) + bars (right) ---- */}
-          <div className="msp-body">
-            <div className="msp-left">
-              {schedule.map(row => (
-                <div key={row.id} className={`msp-lrow lrow-${row.kind}`}>
-                  <div className="msp-cell-name" style={{ paddingLeft: 8 + row.depth * 18 + 'px' }}>
-                    {row.kind === 'team' ? (
-                      <>
-                        <button
-                          className={`msp-caret ${row.hasKids ? '' : 'caret-empty'}`}
-                          onClick={() => row.hasKids && toggle(row.id)}
-                          title={row.collapsed ? 'Mở' : 'Thu gọn'}
-                        >
-                          {row.hasKids ? (row.collapsed ? '▸' : '▾') : '·'}
-                        </button>
-                        <input
-                          className="cell-input cell-name"
-                          type="text"
-                          value={row.name}
-                          placeholder="Tên team"
-                          onChange={e => setRow(row.id, 'name', e.target.value)}
-                        />
-                        <span className="row-actions">
-                          <button
-                            className="btn-add-child"
-                            title={`Thêm task con cho ${row.name}`}
-                            onClick={() => addChild(row.id)}
-                          >
-                            +
-                          </button>
-                          <button
-                            className="btn-del"
-                            title={`Xoá ${row.name}`}
-                            onClick={() => removeTeam(row.id)}
-                          >
-                            ×
-                          </button>
-                        </span>
-                      </>
-                    ) : row.kind === 'leaf' ? (
-                      <>
-                        <i className={`phase-dot dot-${row.phase}`} />
-                        <span className="leaf-name">{row.name}</span>
-                      </>
-                    ) : (
-                      <>
-                        <i className="phase-dot dot-fe" />
-                        <span className="leaf-name fe-leaf-name">{row.name}</span>
-                      </>
-                    )}
-                  </div>
-                  <div className="msp-cell-start">{fmtShort(row.start)}</div>
-                  <div className="msp-cell-dur">
-                    {row.kind === 'leaf' ? (
-                      <span className="dur-edit">
-                        <input
-                          className="cell-input cell-days"
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={row.days}
-                          onChange={setDays(row.teamId, row.field)}
-                        />
-                        <span className="days-unit">d</span>
-                      </span>
-                    ) : (
-                      <span className="dur-total">{row.dur}d</span>
-                    )}
-                    <span className="dur-end">{fmtShort(row.end || row.to)}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="msp-right" ref={plotRef} onMouseLeave={() => setTip(null)}>
-              <div className="msp-layer">
-                {weekends.map(i => (
-                  <div
-                    key={i}
-                    className="weekend"
-                    style={{
-                      left: (i / total) * 100 + '%',
-                      width: (Math.min(2, total - i) / total) * 100 + '%',
-                    }}
-                  />
-                ))}
-                {ticks.map(t => (
-                  <div key={t} className="gridline" style={{ left: pos(t) + '%' }} />
-                ))}
-                {flagged.map(m => (
-                  <div
-                    key={m.cls}
-                    className={`marker marker-${m.cls} own-${m.owner}`}
-                    style={{ left: pos(m.date) + '%' }}
-                  />
-                ))}
-              </div>
-
-              {schedule.map(row => (
-                <div key={row.id} className={`msp-brow brow-${row.kind}`}>
-                  {row.kind === 'team' && row.start && row.end && (
-                    <div
-                      className="msp-summary"
-                      style={{
-                        left: pos(row.start) + '%',
-                        width: Math.max(pos(row.end) - pos(row.start), 0.3) + '%',
-                      }}
-                      onMouseMove={e =>
-                        showTip(e, [
-                          `${row.name} (tổng)`,
-                          `${fmtFull(row.start)} → ${fmtFull(row.end)}`,
-                          `${row.dur} ngày làm việc`,
-                        ])
-                      }
-                    />
-                  )}
-                  {row.kind === 'leaf' && (
-                    <div
-                      className="seg-hit"
-                      style={{
-                        left: pos(row.from) + '%',
-                        width: Math.max(pos(row.to) - pos(row.from), 0.3) + '%',
-                      }}
-                      onMouseMove={e =>
-                        showTip(e, [
-                          `${row.name}`,
-                          `${fmtFull(row.from)} → ${fmtFull(row.to)}`,
-                          `${row.dur} ngày làm việc`,
-                        ])
-                      }
-                    >
-                      <div className={`seg seg-${row.phase}`} />
-                    </div>
-                  )}
-                  {row.kind === 'fe' &&
-                    (row.window ? (
-                      <div
-                        className="seg-hit"
-                        style={{
-                          left: pos(row.window.from) + '%',
-                          width: Math.max(pos(row.window.to) - pos(row.window.from), 0.3) + '%',
-                        }}
-                        onMouseMove={e =>
-                          showTip(e, [
-                            'Cửa sổ FE Integration',
-                            `${fmtFull(row.window.from)} → ${fmtFull(row.window.to)}`,
-                            `${row.dur} ngày trước Deadline Studio`,
-                          ])
-                        }
-                      >
-                        <div className="seg seg-fe">
-                          <span className="seg-fe-label">{row.dur} ngày</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="fe-none">✕ Không còn thời gian integration trước Deadline</span>
-                    ))}
-                </div>
-              ))}
-
-              {tip && (
-                <div
-                  className={`tooltip${tip.flip ? ' tooltip-flip' : ''}`}
-                  style={{ left: tip.x, top: tip.y }}
-                >
-                  {tip.lines.map(l => (
-                    <div key={l}>{l}</div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="legend">
-        {!oos.signoff && (
-          <span className="legend-item">
-            <i className="chip chip-contract" />
-            {itemLabel} → SignOff
-          </span>
-        )}
-        {!oos.ready && (
-          <span className="legend-item">
-            <i className="chip chip-dev" />
-            Dev → Ready Integration
-          </span>
-        )}
-        {!oos.done && (
-          <span className="legend-item">
-            <i className="chip chip-enddev" />
-            → Development Done
-          </span>
-        )}
-        {!oos.ready && (
-          <span className="legend-item">
-            <i className="chip chip-fe" />
-            Cửa sổ FE Integration
-          </span>
-        )}
-        <span className="legend-sep" />
-        <span className="legend-item">
-          <i className="flag-key key-studio" />
-          Mốc <b>STUDIO</b> — mục tiêu / ràng buộc
-        </span>
-        <span className="legend-item">
-          <i className="flag-key key-be" />
-          Mốc <b>BE</b> — kế hoạch thực tế (MAX các team)
-        </span>
-      </div>
-    </div>
+    </Willow>
   );
 }
