@@ -271,12 +271,15 @@ export default function SvarGantt({
       template: (v, task) => (task && task.msLabel) || '',
     },
     {
-      // Cột xoá: chỉ hàng team/task con (kind='team') mới có dấu ✕ (click xử lý qua delegation)
+      // Cột xoá: chỉ hàng team (kind='team') mới có dấu ✕ (click xử lý qua capture)
       id: 'del',
       header: '',
       width: 42,
       align: 'center',
-      template: (v, task) => (task && task.kind === 'team' ? '✕' : ''),
+      template: (v, task) =>
+        task && task.kind === 'team'
+          ? '<span class="svar-del" title="Xoá team">✕</span>'
+          : '',
     },
   ];
 
@@ -342,6 +345,25 @@ export default function SvarGantt({
       if (t.kind === 'team' && removeTeam) removeTeam(t.teamId); // chỉ xoá team, không xoá phase
       return false;
     });
+
+    // Click vào cột ✕ để xoá team (SVAR nuốt event, nên bắt capture trên body)
+    const gridBody = wrapRef.current && wrapRef.current.querySelector('.wx-body');
+    if (gridBody) {
+      const clickDelete = e => {
+        const cell = e.target.closest('.wx-cell[data-col-id="del"]');
+        if (!cell) return;
+        const row = cell.closest('[data-id]');
+        if (!row) return;
+        const rawId = row.getAttribute('data-id');
+        const task = api.getTask(rawId) || api.getTask(rawId.replace(/^:/, ''));
+        if (task && task.kind === 'team' && removeTeam) {
+          e.stopPropagation();
+          e.preventDefault();
+          removeTeam(task.teamId);
+        }
+      };
+      gridBody.addEventListener('click', clickDelete, true);
+    }
   };
 
   return (

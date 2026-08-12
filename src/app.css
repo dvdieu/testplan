@@ -1225,14 +1225,21 @@ h1 {
 }
 
 /* Cột xoá ✕ trong lưới — hiện như nút xoá, đỏ khi hover */
-.svar-wrap .wx-gantt .wx-cell[data-col-id=':del'] {
+.svar-wrap .wx-gantt .wx-cell[data-col-id=':del'],
+.svar-wrap .wx-gantt .wx-cell[data-col-id='del'] {
   cursor: pointer;
   color: var(--text-secondary);
   font-weight: 700;
   transition: color 0.15s;
+  user-select: none;
 }
-.svar-wrap .wx-gantt .wx-cell[data-col-id=':del']:hover {
+.svar-wrap .wx-gantt .wx-cell[data-col-id=':del']:hover,
+.svar-wrap .wx-gantt .wx-cell[data-col-id='del']:hover {
   color: #e5484d;
+}
+.svar-del {
+  display: inline-block;
+  width: 100%;
 }
 
 /* chart card header: title + Thêm team button trên một hàng */

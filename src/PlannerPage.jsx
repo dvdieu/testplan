@@ -228,17 +228,11 @@ export default function PlannerPage() {
       // root row cannot be removed if it is the only root
       const roots = p.rows.filter(r => !r.parentId);
       if (!target.parentId && roots.length <= 1) return p;
-      // remove the row and all its children
+      // remove the row and all its children (one level)
       const idsToRemove = new Set([id]);
-      const collectChildren = parentId => {
-        p.rows.forEach(r => {
-          if (r.parentId === parentId) {
-            idsToRemove.add(r.id);
-            collectChildren(r.id);
-          }
-        });
-      };
-      collectChildren(id);
+      p.rows.forEach(r => {
+        if (r.parentId === id) idsToRemove.add(r.id);
+      });
       return { ...p, rows: p.rows.filter(r => !idsToRemove.has(r.id)) };
     });
 
