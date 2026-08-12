@@ -823,8 +823,54 @@ h1 {
 
 .th-del,
 .td-del {
-  width: 34px;
+  width: 64px;
   text-align: center;
+}
+
+.row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-add-child {
+  background: var(--page);
+  border: 1px dashed var(--baseline);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 7px;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.btn-add-child:hover {
+  border-color: var(--series-1);
+  color: var(--series-1);
+}
+
+.name-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.child-indent {
+  color: var(--muted);
+  font-size: 14px;
+  user-select: none;
+}
+
+.cell-child {
+  min-width: 90px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.row-child {
+  background: color-mix(in srgb, var(--muted) 4%, transparent);
 }
 
 .noe-field .noe-studio {

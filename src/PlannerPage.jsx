@@ -145,8 +145,43 @@ export default function PlannerPage() {
         },
       ],
     }));
+  const addChild = parentId =>
+    setPlan(p => {
+      const parentIndex = p.rows.findIndex(r => r.id === parentId);
+      if (parentIndex === -1) return p;
+      const siblings = p.rows.filter(r => r.parentId === parentId);
+      const newRow = {
+        id: crypto.randomUUID(),
+        parentId,
+        name: `Task ${siblings.length + 1}`,
+        contractDays: 0,
+        readyDays: 0,
+        doneDays: 0,
+      };
+      const rows = [...p.rows];
+      rows.splice(parentIndex + siblings.length + 1, 0, newRow);
+      return { ...p, rows };
+    });
   const removeTeam = id =>
-    setPlan(p => (p.rows.length <= 1 ? p : { ...p, rows: p.rows.filter(r => r.id !== id) }));
+    setPlan(p => {
+      const target = p.rows.find(r => r.id === id);
+      if (!target) return p;
+      // root row cannot be removed if it is the only root
+      const roots = p.rows.filter(r => !r.parentId);
+      if (!target.parentId && roots.length <= 1) return p;
+      // remove the row and all its children
+      const idsToRemove = new Set([id]);
+      const collectChildren = parentId => {
+        p.rows.forEach(r => {
+          if (r.parentId === parentId) {
+            idsToRemove.add(r.id);
+            collectChildren(r.id);
+          }
+        });
+      };
+      collectChildren(id);
+      return { ...p, rows: p.rows.filter(r => !idsToRemove.has(r.id)) };
+    });
 
   const itemLabel = phaseItemLabel(phase);
   const desiredLabel = phaseDesiredLabel(phase);
@@ -394,15 +429,18 @@ export default function PlannerPage() {
           </thead>
           <tbody>
             {rows.map(r => (
-              <tr key={r.id}>
+              <tr key={r.id} className={r.parentId ? 'row-child' : 'row-parent'}>
                 <td>
-                  <input
-                    className="cell-input cell-name"
-                    type="text"
-                    value={r.name}
-                    placeholder="Tên team"
-                    onChange={e => setRow(r.id, 'name', e.target.value)}
-                  />
+                  <div className="name-cell">
+                    {r.parentId && <span className="child-indent">↳</span>}
+                    <input
+                      className={`cell-input cell-name ${r.parentId ? 'cell-child' : ''}`}
+                      type="text"
+                      value={r.name}
+                      placeholder={r.parentId ? 'Tên task con' : 'Tên team'}
+                      onChange={e => setRow(r.id, 'name', e.target.value)}
+                    />
+                  </div>
                 </td>
                 <td>
                   <div className="days-cell">
@@ -448,11 +486,20 @@ export default function PlannerPage() {
                   </div>
                 </td>
                 <td className="td-del">
-                  {rows.length > 1 && (
+                  <div className="row-actions">
+                    {!r.parentId && (
+                      <button
+                        className="btn-add-child"
+                        title={`Thêm task con cho ${r.name}`}
+                        onClick={() => addChild(r.id)}
+                      >
+                        +
+                      </button>
+                    )}
                     <button className="btn-del" title={`Xoá ${r.name}`} onClick={() => removeTeam(r.id)}>
                       ×
                     </button>
-                  )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -489,9 +536,8 @@ export default function PlannerPage() {
         </button>
         <p className="logic-note">
           Sửa trực tiếp trong bảng — panel Backend &amp; biểu đồ phía trên cập nhật ngay. Cả 3 cột
-          đều nhập <b>số ngày làm việc</b>: SignOff API tính từ KickOff, Ready Integration tính từ
-          MAX(SignOff API), Development Done tính từ Ready Integration. Ngày tuyệt đối suy ra hiển
-          thị bên cạnh. Mỗi mốc của Backend = ngày muộn nhất (MAX) của tất cả team.
+          đều nhập <b>số ngày làm việc</b>. Bấm dấu + trên hàng team để thêm task con (1 level).
+          Mỗi mốc của Backend = ngày muộn nhất (MAX) của tất cả team &amp; task con.
         </p>
       </section>
     </div>
