@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Gantt from './Gantt.jsx';
+import TaskMilestoneMatrix from './TaskMilestoneMatrix.jsx';
 import { loadPlan, savePlan } from './storage.js';
 import { PHASES, phaseDesiredLabel, phaseItemLabel, phaseLabel } from './phase.js';
 import { computeBackend, defaultPlan, hydratePlan, MS_STATUSES, MS_TYPES } from './model.js';
@@ -249,46 +250,14 @@ export default function PlannerPage() {
           removeMilestone={removeMilestone}
         />
 
-        <div className="team-manager">
-          <div className="tm-group">
-            <span className="team-manager-label">Xoá team:</span>
-            {plan.rows.filter(r => !r.parentId).map(r => (
-              <button
-                key={r.id}
-                className="btn-del-team"
-                title={`Xoá ${r.name || 'team'}`}
-                onClick={() => removeTeam(r.id)}
-              >
-                {r.name || 'Team ?'} ×
-              </button>
-            ))}
-          </div>
-          {plan.rows.some(r => r.parentId) && (
-            <div className="tm-group">
-              <span className="team-manager-label">Xoá task con:</span>
-              {plan.rows.filter(r => r.parentId).map(r => {
-                const parent = plan.rows.find(p => p.id === r.parentId);
-                return (
-                  <button
-                    key={r.id}
-                    className="btn-del-team btn-del-sub"
-                    title={`Xoá ${r.name || 'task'} thuộc ${parent?.name || 'team'}`}
-                    onClick={() => removeTeam(r.id)}
-                  >
-                    {r.name || 'Task ?'} <span className="tm-parent">({parent?.name || '?'})</span> ×
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
         <p className="logic-note">
           Sửa trực tiếp trong lưới: <b>Task Name</b> (đổi tên team), <b>WKD</b> (số ngày làm việc mỗi phase — bỏ cuối tuần).
           Nút <b>New task</b> trên thanh công cụ để thêm; <b>chuột phải</b> → <b>Delete</b> để xoá; caret ▸ <b>ẩn/hiện</b> nhóm.
           Nhãn tím = mốc Studio mong muốn; nhãn trắng = kế hoạch BE thực tế (ngày muộn nhất — MAX — của mọi team &amp; task con).
         </p>
       </section>
+
+      <TaskMilestoneMatrix plan={plan} backend={backend} setField={set} />
     </div>
   );
 }

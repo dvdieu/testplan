@@ -1376,3 +1376,173 @@ h1 {
   font-weight: 700;
   color: var(--text-secondary);
 }
+
+/* ---------- Ma trận Task ↔ Mốc Studio ---------- */
+.matrix-card {
+  margin-bottom: 14px;
+}
+
+.matrix-tally {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.tally-ok {
+  color: var(--good-text);
+  background: color-mix(in srgb, var(--good) 12%, transparent);
+}
+
+.tally-bad {
+  color: var(--critical);
+  background: color-mix(in srgb, var(--critical) 12%, transparent);
+}
+
+.matrix-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.matrix {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  font-size: 12px;
+}
+
+.matrix th,
+.matrix td {
+  border-bottom: 1px solid var(--grid);
+  border-right: 1px solid var(--grid);
+  padding: 7px 8px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.matrix thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface-1);
+}
+
+.mx-corner {
+  position: sticky;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  background: var(--surface-1);
+}
+
+.mx-col {
+  min-width: 82px;
+}
+
+.mx-col-label {
+  display: block;
+  font-weight: 700;
+  color: var(--studio);
+}
+
+.mx-col-sub {
+  display: block;
+  font-size: 10.5px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.mx-col-date {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 1px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mx-status-h {
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+
+.mx-row {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  text-align: left;
+  white-space: nowrap;
+  background: var(--surface-1);
+}
+
+.mx-row-team {
+  display: block;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.mx-row-child .mx-row-team {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.mx-row-phase {
+  display: block;
+  font-size: 10.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.mx-cell {
+  cursor: pointer;
+  color: var(--baseline);
+  font-weight: 700;
+  user-select: none;
+  transition: background 0.12s, color 0.12s;
+}
+
+.mx-cell:hover {
+  background: color-mix(in srgb, var(--series-1) 12%, transparent);
+  color: var(--series-1);
+}
+
+.mx-mapped {
+  font-size: 15px;
+}
+
+.mx-ok {
+  background: color-mix(in srgb, var(--good) 15%, transparent);
+  color: var(--good-text);
+}
+
+.mx-bad {
+  background: color-mix(in srgb, var(--critical) 15%, transparent);
+  color: var(--critical);
+}
+
+.mx-ok:hover {
+  background: color-mix(in srgb, var(--good) 24%, transparent);
+  color: var(--good-text);
+}
+
+.mx-bad:hover {
+  background: color-mix(in srgb, var(--critical) 24%, transparent);
+  color: var(--critical);
+}
+
+/* map tự động (chưa ghim) → mờ + gạch chân chấm để phân biệt với ô đã ghim */
+.mx-auto {
+  opacity: 0.66;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.mx-status {
+  white-space: nowrap;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
