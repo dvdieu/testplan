@@ -22,7 +22,7 @@ function compare(taskDate, msDate) {
   return { met, days };
 }
 
-export default function TaskMilestoneMatrix({ plan, backend, setField }) {
+export default function TaskMilestoneMatrix({ plan, backend, setField, collapsed = false, onToggle }) {
   const taskMs = plan.taskMs || {};
   const oos = plan.oos || {};
 
@@ -86,14 +86,16 @@ export default function TaskMilestoneMatrix({ plan, backend, setField }) {
   });
 
   return (
-    <section className="card matrix-card">
-      <div className="chart-head">
+    <section className={`card matrix-card${collapsed ? ' is-collapsed' : ''}`}>
+      <div className="chart-head card-head" onClick={onToggle} role="button" tabIndex={0}>
+        <button type="button" className="card-collapse" aria-expanded={!collapsed} aria-label="Thu gọn / mở">{collapsed ? '▸' : '▾'}</button>
         <h2>Mapping Task ↔ Mốc Studio — có đáp ứng timeline?</h2>
         <span className={`matrix-tally ${lateCount ? 'tally-bad' : 'tally-ok'}`}>
           {lateCount ? `✕ ${lateCount} task trễ` : `✓ ${metCount} task đạt`}
         </span>
       </div>
 
+      <div className="card-body">
       <div className="matrix-scroll">
         <table className="matrix">
           <thead>
@@ -162,6 +164,7 @@ export default function TaskMilestoneMatrix({ plan, backend, setField }) {
         Mỗi <b>task</b> (mỗi phase của team) map tới <b>một mốc Studio</b> — bấm ô để đổi mốc mục tiêu; bấm lại ô đang chọn để về <i>auto</i> (đoán theo status).
         Ô <b style={{ color: 'var(--good-text)' }}>✓</b> = BE xong đúng/trước mốc; ô <b style={{ color: 'var(--critical)' }}>✕</b> = trễ. Ô mờ = map tự động; ô đậm = bạn đã ghim.
       </p>
+      </div>
     </section>
   );
 }

@@ -5,14 +5,7 @@ import TaskMilestoneMatrix from './TaskMilestoneMatrix.jsx';
 import { loadPlan, savePlan } from './storage.js';
 import { PHASES, phaseDesiredLabel, phaseItemLabel, phaseLabel } from './phase.js';
 import { computeBackend, defaultPlan, hydratePlan, MS_STATUSES, MS_TYPES } from './model.js';
-import { fmtFull, todayStr } from './date.js';
-
-function SlackBadge({ slack, targetLabel }) {
-  if (slack === null) return <span className="delta delta-muted">Chưa đủ dữ liệu</span>;
-  if (slack > 0) return <span className="delta delta-ok">✓ Sớm hơn {targetLabel} {slack} ngày</span>;
-  if (slack === 0) return <span className="delta delta-ok">✓ Đúng {targetLabel}</span>;
-  return <span className="delta delta-bad">✕ Trễ {targetLabel} {-slack} ngày</span>;
-}
+import { todayStr } from './date.js';
 
 export default function PlannerPage() {
   const { projectName } = useParams();
@@ -20,6 +13,9 @@ export default function PlannerPage() {
   const [phase, setPhase] = useState('engine');
   const [plan, setPlan] = useState(() => defaultPlan(projectName, phase));
   const [loading, setLoading] = useState(true);
+  // Thu gọn từng section → nhường chiều cao cho Gantt (tâm điểm). Mặc định mở.
+  const [collapsed, setCollapsed] = useState({});
+  const toggle = key => setCollapsed(c => ({ ...c, [key]: !c[key] }));
 
   useEffect(() => {
     setLoading(true);
@@ -84,14 +80,7 @@ export default function PlannerPage() {
   // ---- derived ----
   const itemLabel = phaseItemLabel(phase);
   const desiredLabel = phaseDesiredLabel(phase);
-  const { oos } = plan;
   const backend = computeBackend(plan);
-  const { feContract, feReady, projectDone, apiSlack, readySlack, doneSlack, canJudge, accepted } = backend;
-
-  const problems = [];
-  if (!oos.signoff && apiSlack !== null && apiSlack < 0) problems.push(`trễ mốc ${itemLabel} ${-apiSlack} ngày`);
-  if (!oos.ready && readySlack !== null && readySlack < 0) problems.push(`trễ mốc Integration mong muốn ${-readySlack} ngày`);
-  if (!oos.done && doneSlack !== null && doneSlack < 0) problems.push(`trễ Deadline Studio ${-doneSlack} ngày`);
 
   if (loading) {
     return (
@@ -125,9 +114,13 @@ export default function PlannerPage() {
         ))}
       </div>
 
-      <section className="top-grid">
-        <div className="card studio-card">
-          <h2>Studio</h2>
+      <section className="top-solo">
+        <div className={`card studio-card${collapsed.studio ? ' is-collapsed' : ''}`}>
+          <div className="card-head" onClick={() => toggle('studio')} role="button" tabIndex={0}>
+            <button type="button" className="card-collapse" aria-expanded={!collapsed.studio} aria-label="Thu gọn / mở">{collapsed.studio ? '▸' : '▾'}</button>
+            <h2>Studio</h2>
+          </div>
+          <div className="card-body">
           <p className="card-note">Yêu cầu từ phía Studio / khách hàng — hiện trên biểu đồ dưới dạng nhãn tím</p>
           <div className="studio-grid">
             <label className="field">
@@ -184,52 +177,11 @@ export default function PlannerPage() {
               ))}
             </datalist>
           </div>
-        </div>
-
-        <div className="card be-card">
-          <h2>Backend đáp ứng</h2>
-          <p className="card-note">= MAX từng mốc của {backend.rows.length} team trong biểu đồ dưới — bar màu trên timeline</p>
-
-          <div className="be-row">
-            <i className="be-dot dot-contract" />
-            <span className="be-label">{itemLabel} (Mốc 2)</span>
-            <span className="be-date">{oos.signoff ? 'Ngoài scope' : fmtFull(feContract)}</span>
-            {oos.signoff ? <span className="delta delta-muted">không đánh giá</span> : <SlackBadge slack={apiSlack} targetLabel={desiredLabel} />}
-            <label className="oos-mini">
-              <input type="checkbox" checked={oos.signoff} onChange={e => set('oos', { ...oos, signoff: e.target.checked })} />
-              ngoài scope
-            </label>
-          </div>
-          <div className="be-row">
-            <i className="be-dot dot-dev" />
-            <span className="be-label">Ready Integration (Mốc 3)</span>
-            <span className="be-date">{oos.ready ? 'Ngoài scope' : fmtFull(feReady)}</span>
-            {oos.ready ? <span className="delta delta-muted">không đánh giá</span> : <SlackBadge slack={readySlack} targetLabel="mốc Integration mong muốn" />}
-            <label className="oos-mini">
-              <input type="checkbox" checked={oos.ready} onChange={e => set('oos', { ...oos, ready: e.target.checked })} />
-              ngoài scope
-            </label>
-          </div>
-          <div className="be-row">
-            <i className="be-dot dot-enddev" />
-            <span className="be-label">Development Done (Mốc 4)</span>
-            <span className="be-date">{oos.done ? 'Ngoài scope' : fmtFull(projectDone)}</span>
-            {oos.done ? <span className="delta delta-muted">không đánh giá</span> : <SlackBadge slack={doneSlack} targetLabel="Deadline Studio" />}
-            <label className="oos-mini">
-              <input type="checkbox" checked={oos.done} onChange={e => set('oos', { ...oos, done: e.target.checked })} />
-              ngoài scope
-            </label>
-          </div>
-
-          <div className={`be-verdict ${accepted ? 'verdict-ok' : 'verdict-bad'}`}>
-            {!canJudge
-              ? '— Nhập đủ ngày để đánh giá'
-              : accepted
-                ? `✓ Chấp nhận được — ${oos.done ? 'API Doc & Integration đúng hẹn (Development Done ngoài scope)' : 'đáp ứng cả mốc API Doc, Integration mong muốn & Deadline Studio'}`
-                : `✕ Không đạt — BE ${problems.join(', ')}, cần đàm phán lại plan`}
           </div>
         </div>
       </section>
+
+      <TaskMilestoneMatrix plan={plan} backend={backend} setField={set} collapsed={!!collapsed.matrix} onToggle={() => toggle('matrix')} />
 
       <section className="card chart-card">
         <div className="chart-head">
@@ -256,8 +208,6 @@ export default function PlannerPage() {
           Nhãn tím = mốc Studio mong muốn; nhãn trắng = kế hoạch BE thực tế (ngày muộn nhất — MAX — của mọi team &amp; task con).
         </p>
       </section>
-
-      <TaskMilestoneMatrix plan={plan} backend={backend} setField={set} />
     </div>
   );
 }

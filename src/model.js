@@ -1,6 +1,6 @@
 // Lõi nghiệp vụ (thuần, không React, không IO). Toàn bộ toán lịch + phán quyết ở đây;
 // PlannerPage chỉ dựng UI và gọi các hàm này. Ngày suy từ KickOff theo chuỗi WKD.
-import { addWkdStr, diffWkd, maxDate, todayStr } from './date.js';
+import { addWkdStr, diffWkd, maxDate, setHolidays, todayStr } from './date.js';
 
 export const num = v => Math.max(0, Math.round(Number(v) || 0));
 
@@ -69,6 +69,7 @@ export function resolveRows(plan) {
 // Toàn bộ ngày & phán quyết Backend cho một plan. View chỉ đọc kết quả.
 export function computeBackend(plan) {
   const oos = plan.oos || { signoff: false, ready: false, done: false };
+  setHolidays(plan.holidays); // ngày nghỉ ảnh hưởng toàn bộ phép tính WKD bên dưới
   const rows = resolveRows(plan);
   const feContract = maxDate(...rows.map(r => r.contract));
   const feReady = maxDate(...rows.map(r => r.ready));
@@ -128,6 +129,8 @@ export function defaultPlan(projectName, phase) {
     noe: false,
     milestones: defaultMilestones(today),
     oos: { signoff: false, ready: false, done: false },
+    holidays: [], // ngày nghỉ tuỳ chỉnh (YYYY-MM-DD) — coi như ngày không làm việc
+    lengthUnit: 'day', // đơn vị làm tròn độ dài bar trên Gantt (hour|day|week)
     rows: [
       mk('Team Infra', 3, 2, 10),
       mk('Team BO', 5, 5, 12),

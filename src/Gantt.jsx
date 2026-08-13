@@ -118,6 +118,23 @@ function buildData(plan, backend, itemLabel) {
     }
   });
 
+  // SVAR sập khi summary KHÔNG có subtask: hoặc "Summary tasks must have start and end
+  // dates..." (thiếu ngày), hoặc "Cannot read properties of null (reading 'forEach')" (SVAR
+  // duyệt mảng con null). Xảy ra khi xoá phase CUỐI của 1 team (mọi WKD=0 → không phase nào
+  // lọt filter, không team con) → team summary rỗng. Vá: hạ summary rỗng xuống 'task' (leaf)
+  // + cho bar rỗng 1 ngày tại KickOff. Thêm lại WKD > 0 → rebuild thành summary như cũ.
+  const referenced = new Set(tasks.map(t => t.parent).filter(Boolean));
+  const fb = startDate || todayStr();
+  tasks.forEach(t => {
+    if (t.type === 'summary' && !referenced.has(t.id)) {
+      t.type = 'task';
+      t.open = false; // BẮT BUỘC: SVAR toArray đệ quy theo open===true, KHÔNG theo type;
+      // nếu còn open:true mà data=null (không con) → Nt2(null).forEach → sập.
+      t.start = D(fb);
+      t.end = D(addDaysStr(fb, 1));
+    }
+  });
+
   const lo = minDate(...dates.filter(Boolean));
   const hi = maxDate(...dates.filter(Boolean));
   const start = lo ? D(addDaysStr(lo, -3)) : D(todayStr());
@@ -142,7 +159,22 @@ export default function Gantt({
   removeMilestone,
 }) {
   const [api, setApi] = useState(null);
+  const [scrollDate, setScrollDate] = useState('');
+  const [holidayDate, setHolidayDate] = useState('');
   const today = todayStr();
+
+  const lengthUnit = plan.lengthUnit || 'day';
+  const holidays = plan.holidays || [];
+  const holidaySet = useMemo(() => new Set(holidays), [holidays]);
+
+  // Cuộn timeline tới 1 ngày (SVAR native: exec 'scroll-chart' với {date}).
+  const scrollToDate = () => { if (api && scrollDate) api.exec('scroll-chart', { date: D(scrollDate) }); };
+  const addHoliday = () => {
+    if (!holidayDate || holidaySet.has(holidayDate)) return;
+    setField && setField('holidays', [...holidays, holidayDate].sort());
+    setHolidayDate('');
+  };
+  const removeHoliday = d => setField && setField('holidays', holidays.filter(x => x !== d));
 
   const data = useMemo(() => buildData(plan, backend, itemLabel), [plan, backend, itemLabel]);
   // Remount SVAR khi cấu trúc/ngày đổi từ các panel khác → chart seed lại từ model.
@@ -153,7 +185,15 @@ export default function Gantt({
     // XOÁ: chặn default của SVAR (return false) rồi tự xoá trong model → remount phản ánh.
     a.intercept('delete-task', ({ id }) => {
       const c = classify(id);
-      if (c.kind === 'group' || c.kind === 'kickoff' || c.kind === 'deadline' || c.kind === 'phase') return false;
+      if (c.kind === 'group' || c.kind === 'kickoff' || c.kind === 'deadline') return false;
+      if (c.kind === 'phase') {
+        // Phase KHÔNG phải thực thể độc lập — 3 bar của team suy từ 3 số WKD. "Xoá" phase =
+        // set WKD phase đó về 0 → bar/hàng thu lại, model vẫn nhất quán (remount vẽ lại).
+        // Khôi phục: sửa WKD ở phase còn lại của team, hoặc nút "Reset mặc định".
+        const field = PHASE_FIELD[c.phase];
+        if (field) setRow && setRow(c.teamId, field, 0);
+        return false;
+      }
       if (c.kind === 'milestone') {
         const m = (plan.milestones || []).find(x => x.id === c.msId);
         if (m && m.hard) return false; // mốc hard code: không xoá
@@ -208,11 +248,52 @@ export default function Gantt({
     setApi(a);
   };
 
-  // Tô sáng cột "hôm nay".
-  const highlightTime = (date, unit) => (unit === 'day' && toStr(date) === today ? 'ip-today-col' : '');
+  // Tô sáng cột: hôm nay > ngày nghỉ > cuối tuần (ngày không làm việc = nền xám, khớp phép tính WKD).
+  const highlightTime = (date, unit) => {
+    if (unit !== 'day') return '';
+    const ds = toStr(date);
+    if (ds === today) return 'ip-today-col';
+    if (holidaySet.has(ds)) return 'ip-holiday-col';
+    const wd = new Date(date).getDay();
+    return wd === 0 || wd === 6 ? 'ip-weekend-col' : '';
+  };
 
   return (
     <Willow>
+      <div className="gantt-controls">
+        <label className="gc-item">
+          <span>Đơn vị (làm tròn)</span>
+          <select value={lengthUnit} onChange={e => setField && setField('lengthUnit', e.target.value)}>
+            <option value="hour">Giờ</option>
+            <option value="day">Ngày</option>
+            <option value="week">Tuần</option>
+          </select>
+        </label>
+        <label className="gc-item">
+          <span>Cuộn tới ngày</span>
+          <span className="gc-inline">
+            <input type="date" value={scrollDate} onChange={e => setScrollDate(e.target.value)} />
+            <button type="button" className="gc-btn" onClick={scrollToDate} disabled={!scrollDate}>Cuộn</button>
+          </span>
+        </label>
+        <label className="gc-item gc-holiday">
+          <span>Ngày nghỉ (tính là ngày không làm việc)</span>
+          <span className="gc-inline">
+            <input type="date" value={holidayDate} onChange={e => setHolidayDate(e.target.value)} />
+            <button type="button" className="gc-btn" onClick={addHoliday} disabled={!holidayDate}>+ Thêm</button>
+          </span>
+        </label>
+        {holidays.length > 0 && (
+          <div className="gc-chips">
+            {holidays.map(d => (
+              <span className="gc-chip" key={d}>
+                {fmtDMY(D(d))}
+                <button type="button" title="Bỏ ngày nghỉ" onClick={() => removeHoliday(d)}>×</button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
       <div className="svar-gantt-host">
         {api && <Toolbar api={api} />}
         <ContextMenu api={api}>
@@ -225,7 +306,7 @@ export default function Gantt({
             columns={COLUMNS}
             start={data.start}
             end={data.end}
-            lengthUnit="day"
+            lengthUnit={lengthUnit}
             cellWidth={34}
             cellHeight={34}
             highlightTime={highlightTime}

@@ -43,10 +43,24 @@ export function isWeekend(s) {
   return d === 0 || d === 6;
 }
 
-// Next working day on or after s (skips Sat/Sun).
+// ---------- ngày nghỉ (holidays) ----------
+// Coi như ngày KHÔNG làm việc — giống cuối tuần. Đặt trước khi tính WKD (computeBackend gọi setHolidays).
+let HOLIDAYS = new Set();
+export function setHolidays(list) {
+  HOLIDAYS = new Set(Array.isArray(list) ? list.filter(Boolean) : []);
+}
+export function isHoliday(s) {
+  return HOLIDAYS.has(s);
+}
+// Ngày không làm việc = cuối tuần HOẶC ngày nghỉ.
+export function isNonWorking(s) {
+  return isWeekend(s) || isHoliday(s);
+}
+
+// Next working day on or after s (skips Sat/Sun + holidays).
 export function nextWkd(s) {
   let cur = s;
-  while (isWeekend(cur)) {
+  while (isNonWorking(cur)) {
     cur = addDaysStr(cur, 1);
   }
   return cur;

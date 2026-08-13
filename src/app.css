@@ -162,6 +162,11 @@ h1 {
   }
 }
 
+/* top hàng đơn: chỉ còn card Studio (bỏ card "Backend đáp ứng") → full width */
+.top-solo {
+  margin-bottom: 14px;
+}
+
 .card {
   background: var(--surface-1);
   border: 1px solid var(--border);
@@ -176,6 +181,52 @@ h1 {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-secondary);
+}
+
+/* ---------- card collapse (thu gọn section) ---------- */
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+.card-head h2 {
+  margin: 0;
+}
+.card-collapse {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.card-head:hover .card-collapse {
+  color: var(--text);
+  background: var(--surface-2, rgba(127, 127, 127, 0.08));
+}
+.card-body {
+  margin-top: 2px;
+}
+/* Card đã thu gọn: ẩn body, đưa header sát viền */
+.card.is-collapsed .card-body {
+  display: none;
+}
+.card.is-collapsed {
+  padding-bottom: 14px;
+}
+.card.is-collapsed .card-head {
+  margin-bottom: 0;
 }
 
 /* Viền trái = owner, khớp màu nhãn mốc trên biểu đồ. */
@@ -487,7 +538,9 @@ h1 {
   position: relative;
   display: flex;
   flex-direction: column;
-  height: 480px;
+  /* Gantt = tâm điểm → chiếm gần trọn viewport. Thu gọn card khác để nó nổi bật hơn. */
+  height: calc(100vh - 150px);
+  min-height: 480px;
   margin-top: 12px;
   border: 1px solid var(--line, #e2e6ee);
   border-radius: 10px;
@@ -507,6 +560,104 @@ h1 {
 /* Cột "hôm nay" */
 .wx-gantt .ip-today-col {
   background: color-mix(in srgb, var(--series-1, #2a78d6) 12%, transparent);
+}
+/* Cuối tuần + ngày nghỉ = nền xám (ngày KHÔNG làm việc, khớp phép tính WKD). */
+.wx-gantt .ip-weekend-col {
+  background: color-mix(in srgb, var(--muted, #8a93a6) 10%, transparent);
+}
+.wx-gantt .ip-holiday-col {
+  background: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--critical, #d03b3b) 15%, transparent) 0,
+    color-mix(in srgb, var(--critical, #d03b3b) 15%, transparent) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+}
+
+/* ---------- thanh điều khiển Gantt (length unit / scroll-to-date / holidays) ---------- */
+.gantt-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 16px;
+  padding: 10px 12px;
+  margin-top: 12px;
+  background: var(--surface-2, rgba(127, 127, 127, 0.05));
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.gc-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.gc-item > span:first-child {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.gc-inline {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.gantt-controls select,
+.gantt-controls input[type='date'] {
+  font-size: 13px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface-1);
+  color: var(--text-primary);
+}
+.gc-btn {
+  font-size: 12.5px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface-1);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.gc-btn:hover:not(:disabled) {
+  border-color: var(--series-1, #2a78d6);
+  color: var(--series-1, #2a78d6);
+}
+.gc-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.gc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  align-self: center;
+}
+.gc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  padding: 3px 4px 3px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--critical, #d03b3b) 12%, transparent);
+  color: var(--critical, #d03b3b);
+  border: 1px solid color-mix(in srgb, var(--critical, #d03b3b) 30%, transparent);
+}
+.gc-chip button {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+}
+.gc-chip button:hover {
+  color: var(--text-primary);
 }
 
 /* ============================================================
