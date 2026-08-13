@@ -152,6 +152,20 @@ export default function PlannerPage() {
                 <span className="noe-label">{plan.noe ? 'YES' : 'NO'}</span>
               </label>
             </label>
+            <label className="field noe-field">
+              <span>JP</span>
+              <label className="noe-toggle noe-studio">
+                <input type="checkbox" checked={plan.jp} onChange={e => set('jp', e.target.checked)} />
+                <span className="noe-label">{plan.jp ? 'YES' : 'NO'}</span>
+              </label>
+            </label>
+            <label className="field noe-field">
+              <span>CERT</span>
+              <label className="noe-toggle noe-studio">
+                <input type="checkbox" checked={plan.cert} onChange={e => set('cert', e.target.checked)} />
+                <span className="noe-label">{plan.cert ? 'YES' : 'NO'}</span>
+              </label>
+            </label>
           </div>
 
           <div className="ms-editor">

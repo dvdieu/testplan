@@ -230,6 +230,8 @@ export function defaultPlan(projectName, phase) {
     studioDeadline: addWkdStr(today, 30),
     pic: '',
     noe: false,
+    jp: false,
+    cert: false,
     milestones: defaultMilestones(today),
     oos: { signoff: false, ready: false, done: false },
     holidays: [], // ngày nghỉ tuỳ chỉnh (YYYY-MM-DD) — coi như ngày không làm việc
