@@ -1,6 +1,6 @@
 // Lõi nghiệp vụ (thuần, không React, không IO). Toàn bộ toán lịch + phán quyết ở đây;
 // PlannerPage chỉ dựng UI và gọi các hàm này. Ngày suy từ KickOff theo chuỗi WKD.
-import { addWkdStr, diffWkd, maxDate, setHolidays, todayStr } from './date.js';
+import { addWkdStr, diffWkd, maxDate, nextWkd, parseDate, setHolidays, todayStr } from './date.js';
 
 export const num = v => Math.max(0, Math.round(Number(v) || 0));
 
@@ -68,6 +68,7 @@ export function resolveRows(plan) {
 
 // Toàn bộ ngày & phán quyết Backend cho một plan. View chỉ đọc kết quả.
 export function computeBackend(plan) {
+  if (plan.template === 'wbs') return computeWbs(plan); // WBS: bộ lịch riêng (Sum tuần tự…)
   const oos = plan.oos || { signoff: false, ready: false, done: false };
   setHolidays(plan.holidays); // ngày nghỉ ảnh hưởng toàn bộ phép tính WKD bên dưới
   const rows = resolveRows(plan);
@@ -108,17 +109,119 @@ export function computeBackend(plan) {
   };
 }
 
+// ---------- WBS (Work Breakdown Structure) ----------
+// Cấu trúc mẫu: Sum (nhóm) → Task (việc) → '+' (việc con). Lịch (theo lựa chọn user):
+//   • Sum chạy TUẦN TỰ  — Sum sau bắt đầu khi Sum trước kết thúc.
+//   • Task trong 1 Sum chạy SONG SONG — cùng bắt đầu tại đầu Sum.
+//   • Việc con SONG SONG trong Task — cùng bắt đầu tại đầu Task.
+//   • Lá mang WKD; node có con thì BAO (span) theo ngày kết thúc muộn nhất của con.
+//   • Sum "Package" = đóng gói → ngày hoàn thành dự án, đem so với deadline Studio.
+export function wbsTemplate() {
+  return [
+    { name: 'Decomposition', children: [
+      { name: 'Docs API GameEngine', wkd: 3 },
+      { name: 'Docs Game History, TopWin, LeaderBoard', wkd: 3 },
+      { name: 'BackOffice', children: [
+        { name: 'BO Report', wkd: 2 },
+        { name: 'History Details', wkd: 2 },
+      ] },
+    ] },
+    { name: 'Faking until to making', children: [
+      { name: 'API GameEngine Ready Mock', children: [
+        { name: 'Devops GameEngine', wkd: 4 },
+      ] },
+      { name: 'API Game History Bet, TopWin, LeaderBoard Ready Mock', children: [
+        { name: 'Devops Platform', wkd: 4 },
+      ] },
+    ] },
+    { name: 'Development-Game', children: [
+      { name: 'GameEngine Development', children: [
+        { name: 'Functional', wkd: 8 },
+        { name: 'Tool cheat', wkd: 4 },
+      ] },
+    ] },
+    { name: 'Integration-QC', children: [
+      { name: 'Support Integration', wkd: 5 },
+    ] },
+    { name: 'Package', wkd: 0 }, // đóng gói = MỐC hoàn thành dự án (so với deadline Studio); không có việc con
+  ];
+}
+
+// Cây template → mảng rows phẳng { id, parentId?, name, wkd? }. Lá có wkd; nhóm không.
+function flattenWbs(nodes, parentId, out) {
+  nodes.forEach(n => {
+    const id = crypto.randomUUID();
+    const row = { id, name: n.name };
+    if (parentId) row.parentId = parentId;
+    if (n.children && n.children.length) {
+      out.push(row);
+      flattenWbs(n.children, id, out);
+    } else {
+      row.wkd = num(n.wkd);
+      out.push(row);
+    }
+  });
+  return out;
+}
+
+// Suy start/end mỗi row của cây WBS. Trả bản sao rows kèm { start, end, wkdEff }.
+// wkdEff = WKD lá (user nhập) hoặc span của nhóm (để hiển thị trong lưới).
+export function resolveWbs(plan) {
+  setHolidays(plan.holidays); // ngày nghỉ ảnh hưởng mọi phép cộng WKD bên dưới
+  const rows = (plan.rows || []).map(r => ({ ...r }));
+  const kids = pid => rows.filter(r => (r.parentId || null) === pid);
+  function schedule(node, start) {
+    node.start = start || null;
+    const cs = kids(node.id);
+    if (!cs.length) {
+      node.end = start ? addWkdStr(start, num(node.wkd)) : null;
+      node.wkdEff = num(node.wkd);
+    } else {
+      let end = start; // con SONG SONG: mọi con bắt đầu tại node.start, node bao tới con muộn nhất
+      cs.forEach(c => {
+        const e = schedule(c, start);
+        if (e && (!end || parseDate(e) > parseDate(end))) end = e;
+      });
+      node.end = end || start || null;
+      node.wkdEff = start && node.end ? diffWkd(start, node.end) : 0;
+    }
+    return node.end;
+  }
+  let cursor = plan.startDate ? nextWkd(plan.startDate) : null; // KickOff (dời tới ngày làm việc)
+  kids(null).forEach(sum => { schedule(sum, cursor); cursor = sum.end || cursor; }); // Sum tuần tự
+  return rows;
+}
+
+// Phán quyết cho plan WBS: projectDone = ngày muộn nhất (đuôi "Package") so deadline Studio.
+function computeWbs(plan) {
+  const rows = resolveWbs(plan);
+  const projectDone = maxDate(...rows.map(r => r.end).filter(Boolean));
+  let doneSlack = null;
+  if (projectDone && plan.studioDeadline) {
+    doneSlack = parseDate(projectDone) <= parseDate(plan.studioDeadline)
+      ? diffWkd(projectDone, plan.studioDeadline)   // xong trước deadline → slack dương
+      : -diffWkd(plan.studioDeadline, projectDone);  // trễ → slack âm
+  }
+  return {
+    rows,
+    wbs: true,
+    feContract: null,
+    feReady: null,
+    projectDone,
+    effApiDoc: null,
+    effReady: null,
+    apiSlack: null,
+    readySlack: null,
+    doneSlack,
+    canJudge: doneSlack != null,
+    accepted: doneSlack != null && doneSlack >= 0,
+  };
+}
+
 // ---------- factory + migrations ----------
 
 export function defaultPlan(projectName, phase) {
   const today = todayStr();
-  const mk = (name, contractDays, readyDays, doneDays) => ({
-    id: crypto.randomUUID(),
-    name,
-    contractDays,
-    readyDays,
-    doneDays,
-  });
   return {
     projectName,
     phase,
@@ -131,12 +234,8 @@ export function defaultPlan(projectName, phase) {
     oos: { signoff: false, ready: false, done: false },
     holidays: [], // ngày nghỉ tuỳ chỉnh (YYYY-MM-DD) — coi như ngày không làm việc
     lengthUnit: 'day', // đơn vị làm tròn độ dài bar trên Gantt (hour|day|week)
-    rows: [
-      mk('Team Infra', 3, 2, 10),
-      mk('Team BO', 5, 5, 12),
-      mk('Team Platform', 6, 7, 14),
-      mk('Team BE', 4, 3, 12),
-    ],
+    template: 'wbs', // seed mặc định = cây WBS (Sum→Task→việc con). Plan cũ đã lưu KHÔNG có cờ này → giữ mô hình 3-phase.
+    rows: flattenWbs(wbsTemplate(), null, []),
   };
 }
 
@@ -175,6 +274,9 @@ function migrateRows(plan) {
 export function hydratePlan(remote, projectName, phase) {
   if (!remote) return defaultPlan(projectName, phase);
   const base = { ...defaultPlan(projectName, phase), ...remote, oos: migrateOos(remote) };
+  // Loại plan lấy THEO remote: plan cũ đã lưu (không có 'template') → undefined → giữ mô hình 3-phase.
+  // (defaultPlan gán template:'wbs' qua spread, phải ghi đè lại để không ép WBS lên dữ liệu cũ.)
+  base.template = remote.template;
   delete base.doneOutOfScope;
   if (!Array.isArray(base.milestones) || base.milestones.length === 0) {
     base.milestones = defaultMilestones(base.startDate || todayStr());
@@ -185,5 +287,6 @@ export function hydratePlan(remote, projectName, phase) {
     const idx = base.milestones.findIndex(m => m.type === 'API-CONTRACT');
     if (idx >= 0) base.milestones = base.milestones.map((m, i) => (i === idx ? { ...m, hard: true } : m));
   }
+  if (base.template === 'wbs') return base; // rows WBS (wkd + cây) — không chạy migrate 3-phase
   return migrateRows(base);
 }

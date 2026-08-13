@@ -146,6 +146,67 @@ function buildData(plan, backend, itemLabel) {
   return { tasks, links, scales, start, end };
 }
 
+// Nhánh WBS: rows đã suy start/end (Sum tuần tự · Task song song · lá WKD) → SVAR tree native.
+// Node có con = summary (bao con); lá = task (bar WKD, sửa được). Sum nối e2s để thấy chuỗi tuần tự.
+function buildWbs(plan, backend) {
+  const { startDate, studioDeadline, milestones = [] } = plan;
+  const { rows } = backend;
+  const tasks = [];
+  const links = [];
+  const dates = [startDate, studioDeadline, todayStr()];
+
+  // Nhóm mốc Studio (tím) — giống nhánh 3-phase.
+  tasks.push({ id: 'grp::studio', text: '🎯 Mốc Studio (mục tiêu)', type: 'summary', open: true });
+  if (startDate) tasks.push({ id: 'ms::kickoff', parent: 'grp::studio', text: 'KickOff', type: 'milestone', start: D(startDate) });
+  milestones.filter(m => m.date).forEach(m => {
+    tasks.push({ id: `ms::${m.id}`, parent: 'grp::studio', text: `${m.type} · ${m.status}${m.hard ? ' 🔒' : ''}`, type: 'milestone', start: D(m.date) });
+    dates.push(m.date);
+  });
+  if (studioDeadline) tasks.push({ id: 'ms::deadline', parent: 'grp::studio', text: 'Deadline Studio', type: 'milestone', start: D(studioDeadline) });
+
+  const hasChild = id => rows.some(r => r.parentId === id);
+  rows.forEach(r => {
+    if (hasChild(r.id)) {
+      // Summary CÓ start/end tường minh (resolveWbs đã suy) → SVAR khỏi tự duyệt con để tính span.
+      tasks.push({ id: r.id, parent: r.parentId || 0, text: r.name || 'Nhóm ?', type: 'summary', open: true, start: D(r.start), end: D(r.end), wkd: r.wkdEff });
+    } else if (num(r.wkd) === 0) {
+      // Lá 0 ngày = MỐC (kim cương). Sum "Package" (đóng gói) = mốc hoàn thành dự án, đặt tại projectDone.
+      tasks.push({ id: r.id, parent: r.parentId || 0, text: r.name || 'Mốc ?', type: 'milestone', start: D(r.start) });
+    } else {
+      tasks.push({ id: r.id, parent: r.parentId || 0, text: r.name || 'Task ?', type: 'task', start: D(r.start), end: D(r.end), progress: 0, wkd: num(r.wkd) });
+    }
+    dates.push(r.start, r.end);
+  });
+
+  // Chuỗi Sum tuần tự: nối e2s giữa các Sum gốc liên tiếp (mũi tên phụ thuộc).
+  const sums = rows.filter(r => !r.parentId);
+  for (let k = 1; k < sums.length; k++) {
+    links.push({ id: `sum:l${k}`, source: sums[k - 1].id, target: sums[k].id, type: 'e2s' });
+  }
+
+  // Vá summary rỗng (Sum bị xoá hết con) → hạ xuống task stub 1 ngày, tránh SVAR sập (xem nhánh 3-phase).
+  const referenced = new Set(tasks.map(t => t.parent).filter(Boolean));
+  const fb = startDate || todayStr();
+  tasks.forEach(t => {
+    if (t.type === 'summary' && !String(t.id).startsWith('grp::') && !referenced.has(t.id)) {
+      t.type = 'task';
+      t.open = false;
+      t.start = D(fb);
+      t.end = D(addDaysStr(fb, 1));
+    }
+  });
+
+  const lo = minDate(...dates.filter(Boolean));
+  const hi = maxDate(...dates.filter(Boolean));
+  const start = lo ? D(addDaysStr(lo, -3)) : D(todayStr());
+  const end = hi ? D(addDaysStr(hi, 5)) : D(addDaysStr(todayStr(), 30));
+  const scales = [
+    { unit: 'month', step: 1, format: fmtMonth },
+    { unit: 'day', step: 1, format: fmtDay },
+  ];
+  return { tasks, links, scales, start, end };
+}
+
 export default function Gantt({
   plan,
   backend,
@@ -176,7 +237,11 @@ export default function Gantt({
   };
   const removeHoliday = d => setField && setField('holidays', holidays.filter(x => x !== d));
 
-  const data = useMemo(() => buildData(plan, backend, itemLabel), [plan, backend, itemLabel]);
+  const isWbs = plan.template === 'wbs';
+  const data = useMemo(
+    () => (isWbs ? buildWbs(plan, backend) : buildData(plan, backend, itemLabel)),
+    [isWbs, plan, backend, itemLabel],
+  );
   // Remount SVAR khi cấu trúc/ngày đổi từ các panel khác → chart seed lại từ model.
   const sig = useMemo(() => JSON.stringify(data.tasks) + '|' + JSON.stringify(data.links), [data]);
 
@@ -214,8 +279,20 @@ export default function Gantt({
     a.on('update-task', ({ id, task }) => {
       if (!task) return;
       const c = classify(id);
-      if (c.kind === 'team' && task.text != null) {
-        setRow && setRow(c.teamId, 'name', task.text);
+      if (c.kind === 'team') {
+        if (task.text != null) setRow && setRow(c.teamId, 'name', task.text);
+        // WBS: node lá sửa được WKD (ô lưới) hoặc kéo giãn bar → quy về số ngày làm việc.
+        // Node nhóm (có con) chỉ đổi tên — độ dài bao theo con, không sửa trực tiếp.
+        if (isWbs && !backend.rows.some(r => r.parentId === c.teamId)) {
+          if (task.wkd != null && task.wkd !== '') {
+            setRow && setRow(c.teamId, 'wkd', num(task.wkd));
+          } else if (task.start || task.end) {
+            const cur = a.getTask(id) || {};
+            const st = toStr(task.start || cur.start);
+            const en = toStr(task.end || cur.end);
+            if (st && en) setRow && setRow(c.teamId, 'wkd', num(diffWkd(st, en)));
+          }
+        }
       } else if (c.kind === 'phase') {
         const field = PHASE_FIELD[c.phase];
         if (field && task.wkd != null && task.wkd !== '') {

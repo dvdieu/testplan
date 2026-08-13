@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Gantt from './Gantt.jsx';
-import TaskMilestoneMatrix from './TaskMilestoneMatrix.jsx';
 import { loadPlan, savePlan } from './storage.js';
 import { PHASES, phaseDesiredLabel, phaseItemLabel, phaseLabel } from './phase.js';
 import { computeBackend, defaultPlan, hydratePlan, MS_STATUSES, MS_TYPES } from './model.js';
@@ -34,16 +33,21 @@ export default function PlannerPage() {
   const setRow = (id, field, value) =>
     setPlan(p => ({ ...p, rows: p.rows.map(r => (r.id === id ? { ...r, [field]: value } : r)) }));
   const addTeam = () =>
-    setPlan(p => ({
-      ...p,
-      rows: [...p.rows, { id: crypto.randomUUID(), name: `Team ${p.rows.length + 1}`, contractDays: 2, readyDays: 2, doneDays: 3 }],
-    }));
+    setPlan(p => {
+      const roots = p.rows.filter(r => !r.parentId).length;
+      const row = p.template === 'wbs'
+        ? { id: crypto.randomUUID(), name: `Sum ${roots + 1}`, wkd: 3 } // Sum gốc mới (tuần tự sau Sum trước)
+        : { id: crypto.randomUUID(), name: `Team ${p.rows.length + 1}`, contractDays: 2, readyDays: 2, doneDays: 3 };
+      return { ...p, rows: [...p.rows, row] };
+    });
   const addChild = parentId =>
     setPlan(p => {
       const parentIndex = p.rows.findIndex(r => r.id === parentId);
       if (parentIndex === -1) return p;
       const siblings = p.rows.filter(r => r.parentId === parentId);
-      const newRow = { id: crypto.randomUUID(), parentId, name: `Task ${siblings.length + 1}`, contractDays: 1, readyDays: 1, doneDays: 1 };
+      const newRow = p.template === 'wbs'
+        ? { id: crypto.randomUUID(), parentId, name: `Task ${siblings.length + 1}`, wkd: 2 } // lá WBS (parent thành nhóm, bao theo con)
+        : { id: crypto.randomUUID(), parentId, name: `Task ${siblings.length + 1}`, contractDays: 1, readyDays: 1, doneDays: 1 };
       const rows = [...p.rows];
       rows.splice(parentIndex + siblings.length + 1, 0, newRow);
       return { ...p, rows };
@@ -53,11 +57,13 @@ export default function PlannerPage() {
       const target = p.rows.find(r => r.id === id);
       if (!target) return p;
       const roots = p.rows.filter(r => !r.parentId);
-      if (!target.parentId && roots.length <= 1) return p; // giữ tối thiểu 1 team gốc
-      const idsToRemove = new Set([id]);
-      p.rows.forEach(r => {
-        if (r.parentId === id) idsToRemove.add(r.id); // xoá cả task con
-      });
+      if (!target.parentId && roots.length <= 1) return p; // giữ tối thiểu 1 nhóm gốc
+      const idsToRemove = new Set();
+      const collect = x => { // xoá đệ quy cả cây con (WBS sâu 2 cấp: Sum→Task→việc con)
+        idsToRemove.add(x);
+        p.rows.forEach(r => { if (r.parentId === x) collect(r.id); });
+      };
+      collect(id);
       return { ...p, rows: p.rows.filter(r => !idsToRemove.has(r.id)) };
     });
 
@@ -180,8 +186,6 @@ export default function PlannerPage() {
           </div>
         </div>
       </section>
-
-      <TaskMilestoneMatrix plan={plan} backend={backend} setField={set} collapsed={!!collapsed.matrix} onToggle={() => toggle('matrix')} />
 
       <section className="card chart-card">
         <div className="chart-head">
