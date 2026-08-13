@@ -69,8 +69,19 @@ export default function PlannerPage() {
       const newRow = p.template === 'wbs'
         ? { id: crypto.randomUUID(), parentId, name: `Task ${siblings.length + 1}`, wkd: 2 } // lá WBS (parent thành nhóm, bao theo con)
         : { id: crypto.randomUUID(), parentId, name: `Task ${siblings.length + 1}`, contractDays: 1, readyDays: 1, doneDays: 1 };
+      // Chèn sau TOÀN BỘ cây con của parent, không chỉ con trực tiếp. Cây sâu nhiều cấp (Sum→Task→việc con)
+      // thì con-cháu KHÔNG liền kề parent → splice theo siblings.length đặt sai chỗ. Gom hậu duệ, chèn sau đứa cuối.
+      const subtree = new Set([parentId]);
+      for (let changed = true; changed; ) {
+        changed = false;
+        p.rows.forEach(r => {
+          if (r.parentId && subtree.has(r.parentId) && !subtree.has(r.id)) { subtree.add(r.id); changed = true; }
+        });
+      }
+      let insertAt = parentIndex + 1;
+      p.rows.forEach((r, i) => { if (subtree.has(r.id)) insertAt = i + 1; });
       const rows = [...p.rows];
-      rows.splice(parentIndex + siblings.length + 1, 0, newRow);
+      rows.splice(insertAt, 0, newRow);
       return { ...p, rows };
     });
   const removeTeam = id =>

@@ -335,12 +335,15 @@ export default function Gantt({
       }
     });
 
-    // THÊM task từ SVAR → định tuyến sang addChild / addTeam của model.
-    a.on('add-task', ({ target }) => {
+    // THÊM task từ SVAR: CHẶN default (a.intercept + return false). Nếu để native chạy, nó add task ĐÔI
+    // (bar ma tạm) RỒI mở inline editor; ngay sau đó model đổi → remount (key=sig) đá editor sang hàng
+    // khác → GHI ĐÈ task đang có ("tự thêm task + overwrite"). Chỉ định tuyến sang addChild/addTeam của
+    // model — model đổi → remount vẽ lại đúng 1 task, không bar ma, không editor lạc chỗ (như delete-task).
+    a.intercept('add-task', ({ target }) => {
       const c = target != null ? classify(target) : { kind: 'team' };
-      if (c.kind === 'team' && c.teamId) addChild && addChild(c.teamId);
-      else if (c.kind === 'phase' && c.teamId) addChild && addChild(c.teamId);
+      if ((c.kind === 'team' || c.kind === 'phase') && c.teamId) addChild && addChild(c.teamId);
       else addTeam && addTeam();
+      return false;
     });
 
     setApi(a);
