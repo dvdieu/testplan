@@ -291,31 +291,34 @@ export default function Gantt({
         // WBS: node lá sửa được WKD (ô lưới) hoặc kéo giãn bar → quy về số ngày làm việc.
         // Node nhóm (có con) chỉ đổi tên — độ dài bao theo con, không sửa trực tiếp.
         if (isWbs && !backend.rows.some(r => r.parentId === c.teamId)) {
-          // Ưu tiên ngày TRƯỚC: Editor (page details) gửi cả task.wkd CŨ kèm start/end mới →
-          // nếu xét wkd trước sẽ set lại số cũ → cột Duration đứng yên. Sửa ngày trong Editor
-          // hoặc kéo giãn bar → quy ra WKD từ start/end. Chỉ dùng task.wkd khi KHÔNG có ngày
-          // (sửa trực tiếp ô WKD trong lưới).
-          if (task.start || task.end) {
+          // Xét theo CÁI GÌ ĐỔI, không theo trường nào có mặt: Editor (page details) & kéo giãn bar
+          // đều gửi task.wkd CŨ (== model) kèm start/end mới; sửa ô WKD trong lưới gửi wkd MỚI kèm
+          // start/end cũ. So wkd payload với model → khác thì đó là sửa ô WKD; bằng (cũ) thì là đổi
+          // ngày → quy WKD từ start/end (diffWkd bỏ cuối tuần). Payload dạng nào cũng đúng.
+          const row = backend.rows.find(r => r.id === c.teamId) || {};
+          const newWkd = task.wkd != null && task.wkd !== '' ? num(task.wkd) : null;
+          if (newWkd != null && newWkd !== num(row.wkd)) {
+            setRow && setRow(c.teamId, 'wkd', newWkd);
+          } else if (task.start || task.end) {
             const cur = a.getTask(id) || {};
             const st = toStr(task.start || cur.start);
             const en = toStr(task.end || cur.end);
             if (st && en) setRow && setRow(c.teamId, 'wkd', num(diffWkd(st, en)));
-          } else if (task.wkd != null && task.wkd !== '') {
-            setRow && setRow(c.teamId, 'wkd', num(task.wkd));
           }
         }
       } else if (c.kind === 'phase') {
         const field = PHASE_FIELD[c.phase];
-        if (field && (task.start || task.end)) {
-          // Ngày TRƯỚC: kéo giãn bar / sửa ngày trong Editor gửi kèm task.wkd CŨ → xét wkd trước
-          // sẽ set lại số cũ, cột Duration không đổi. Quy ngược ra WKD từ start/end (bỏ cuối tuần).
+        const row = backend.rows.find(r => r.id === c.teamId) || {};
+        const newWkd = task.wkd != null && task.wkd !== '' ? num(task.wkd) : null;
+        if (field && newWkd != null && newWkd !== num(row[field])) {
+          // Sửa trực tiếp ô WKD trong lưới → dùng số user nhập.
+          setRow && setRow(c.teamId, field, newWkd);
+        } else if (field && (task.start || task.end)) {
+          // Kéo giãn bar / sửa ngày trong Editor (kèm wkd cũ == model) → quy WKD từ start/end.
           const cur = a.getTask(id) || {};
           const st = toStr(task.start || cur.start);
           const en = toStr(task.end || cur.end);
           if (st && en) setRow && setRow(c.teamId, field, num(diffWkd(st, en)));
-        } else if (field && task.wkd != null && task.wkd !== '') {
-          // Sửa trực tiếp ô WKD trong lưới → set số ngày làm việc.
-          setRow && setRow(c.teamId, field, num(task.wkd));
         }
       } else if (c.kind === 'milestone' && task.start) {
         setMilestone && setMilestone(c.msId, 'date', toStr(task.start));
