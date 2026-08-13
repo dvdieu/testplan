@@ -28,6 +28,24 @@ export default function PlannerPage() {
     if (!loading) savePlan(projectName, phase, plan);
   }, [plan, projectName, phase, loading]);
 
+  // Nút "Lưu" thủ công: ghi KV ngay + phản hồi rõ ("Đã lưu ✓"). App vẫn auto-save nền mỗi lần sửa,
+  // nút này cho người dùng chủ động lưu + thấy chắc chắn đã ghi.
+  const [saveState, setSaveState] = useState('idle'); // idle | saving | saved
+  const saveNow = async () => {
+    setSaveState('saving');
+    try {
+      await savePlan(projectName, phase, plan);
+      setSaveState('saved');
+    } catch {
+      setSaveState('idle');
+    }
+  };
+  useEffect(() => {
+    if (saveState !== 'saved') return undefined;
+    const t = setTimeout(() => setSaveState('idle'), 1800);
+    return () => clearTimeout(t);
+  }, [saveState]);
+
   // ---- mutations ----
   const set = (field, value) => setPlan(p => ({ ...p, [field]: value }));
   const setRow = (id, field, value) =>
@@ -107,6 +125,13 @@ export default function PlannerPage() {
         </div>
         <div className="header-right">
           <span className="game-pill">🎮 {plan.gameName || projectName}</span>
+          <button
+            className={`btn-save${saveState === 'saved' ? ' is-saved' : ''}`}
+            onClick={saveNow}
+            disabled={saveState === 'saving'}
+          >
+            {saveState === 'saving' ? 'Đang lưu…' : saveState === 'saved' ? 'Đã lưu ✓' : '💾 Lưu'}
+          </button>
           <button className="btn-reset" onClick={() => navigate('/')}>← Chọn dự án khác</button>
           <button className="btn-reset" onClick={() => setPlan(defaultPlan(projectName, phase))}>Reset mặc định</button>
         </div>
