@@ -291,26 +291,31 @@ export default function Gantt({
         // WBS: node lá sửa được WKD (ô lưới) hoặc kéo giãn bar → quy về số ngày làm việc.
         // Node nhóm (có con) chỉ đổi tên — độ dài bao theo con, không sửa trực tiếp.
         if (isWbs && !backend.rows.some(r => r.parentId === c.teamId)) {
-          if (task.wkd != null && task.wkd !== '') {
-            setRow && setRow(c.teamId, 'wkd', num(task.wkd));
-          } else if (task.start || task.end) {
+          // Ưu tiên ngày TRƯỚC: Editor (page details) gửi cả task.wkd CŨ kèm start/end mới →
+          // nếu xét wkd trước sẽ set lại số cũ → cột Duration đứng yên. Sửa ngày trong Editor
+          // hoặc kéo giãn bar → quy ra WKD từ start/end. Chỉ dùng task.wkd khi KHÔNG có ngày
+          // (sửa trực tiếp ô WKD trong lưới).
+          if (task.start || task.end) {
             const cur = a.getTask(id) || {};
             const st = toStr(task.start || cur.start);
             const en = toStr(task.end || cur.end);
             if (st && en) setRow && setRow(c.teamId, 'wkd', num(diffWkd(st, en)));
+          } else if (task.wkd != null && task.wkd !== '') {
+            setRow && setRow(c.teamId, 'wkd', num(task.wkd));
           }
         }
       } else if (c.kind === 'phase') {
         const field = PHASE_FIELD[c.phase];
-        if (field && task.wkd != null && task.wkd !== '') {
-          // Sửa trực tiếp ô WKD trong lưới → set số ngày làm việc.
-          setRow && setRow(c.teamId, field, num(task.wkd));
-        } else if (field && (task.start || task.end)) {
-          // Kéo giãn bar → quy ngược ra WKD (diffWkd bỏ cuối tuần).
+        if (field && (task.start || task.end)) {
+          // Ngày TRƯỚC: kéo giãn bar / sửa ngày trong Editor gửi kèm task.wkd CŨ → xét wkd trước
+          // sẽ set lại số cũ, cột Duration không đổi. Quy ngược ra WKD từ start/end (bỏ cuối tuần).
           const cur = a.getTask(id) || {};
           const st = toStr(task.start || cur.start);
           const en = toStr(task.end || cur.end);
           if (st && en) setRow && setRow(c.teamId, field, num(diffWkd(st, en)));
+        } else if (field && task.wkd != null && task.wkd !== '') {
+          // Sửa trực tiếp ô WKD trong lưới → set số ngày làm việc.
+          setRow && setRow(c.teamId, field, num(task.wkd));
         }
       } else if (c.kind === 'milestone' && task.start) {
         setMilestone && setMilestone(c.msId, 'date', toStr(task.start));
