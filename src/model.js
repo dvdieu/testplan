@@ -180,13 +180,17 @@ export function resolveWbs(plan) {
       node.end = s ? addWkdStr(s, num(node.wkd)) : null;
       node.wkdEff = num(node.wkd);
     } else {
-      let end = s; // con SONG SONG: mọi con bắt đầu tại node.start, node bao tới con muộn nhất
+      // NHÓM BAO CON: start = con SỚM nhất, end = con MUỘN nhất (envelope). s chỉ là start MẶC ĐỊNH
+      // cho con chưa ghim startAt — KHÔNG ép start nhóm = s, nếu không con kéo sớm hơn -> start>end -> WKD 0.
+      let cStart = null, cEnd = null;
       cs.forEach(c => {
-        const e = schedule(c, s);
-        if (e && (!end || parseDate(e) > parseDate(end))) end = e;
+        schedule(c, s);
+        if (c.start && (!cStart || parseDate(c.start) < parseDate(cStart))) cStart = c.start;
+        if (c.end && (!cEnd || parseDate(c.end) > parseDate(cEnd))) cEnd = c.end;
       });
-      node.end = end || s || null;
-      node.wkdEff = s && node.end ? diffWkd(s, node.end) : 0;
+      node.start = cStart || s || null;
+      node.end = cEnd || node.start || null;
+      node.wkdEff = node.start && node.end ? diffWkd(node.start, node.end) : 0;
     }
     return node.end;
   }
