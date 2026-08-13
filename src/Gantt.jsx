@@ -8,7 +8,14 @@ import '@svar-ui/react-gantt/all.css';
 import { addDaysStr, diffWkd, maxDate, minDate, parseDate, todayStr } from './date.js';
 import { num } from './model.js';
 
-const D = s => (s ? new Date(parseDate(s)) : null); // 'YYYY-MM-DD' → Date (UTC-noon, an toàn timezone)
+// 'YYYY-MM-DD' → Date tại NỬA ĐÊM LOCAL. SVAR đọc giờ local và lengthUnit='day' làm tròn theo mốc
+// nửa đêm: nếu để UTC-noon (12:00 → 19:00 giờ VN) thì END bị ceil lên ngày kế → MỌI bar dài dư 1 ô
+// (task 3 WKD hiện 6 ô). Nửa đêm local khớp đúng biên ngày → độ dài bar = số ngày lịch thật start..end.
+const D = s => {
+  if (!s) return null;
+  const [y, m, d] = String(s).split('-').map(Number);
+  return y && m && d ? new Date(y, m - 1, d) : null;
+};
 const toStr = dt => {
   if (!dt) return null;
   const d = new Date(dt);

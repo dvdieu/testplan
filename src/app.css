@@ -546,6 +546,11 @@ h1 {
   border-radius: 10px;
   overflow: hidden;
 }
+/* ContextMenu bọc Gantt trong <span> KHÔNG class → đứt mắt xích flex chiều cao: span cao theo nội
+   dung (tràn host, che nội dung), .wx-gantt flex:1 vô hiệu (cha là block) → KHÔNG cuộn nội bộ →
+   scale sticky (top:0) thoát ra dính ĐỈNH TRANG, đè lên header/nội dung. Ép span = flex-column đầy
+   host để .wx-gantt bị giới hạn chiều cao → overflow-y:auto bật cuộn trong → scale sticky đúng phạm vi. */
+.svar-gantt-host > span,
 .svar-gantt-host .wx-willow-theme,
 .svar-gantt-host .wx-willow-dark-theme {
   flex: 1;
