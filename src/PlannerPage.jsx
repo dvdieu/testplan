@@ -50,6 +50,9 @@ export default function PlannerPage() {
   const set = (field, value) => setPlan(p => ({ ...p, [field]: value }));
   const setRow = (id, field, value) =>
     setPlan(p => ({ ...p, rows: p.rows.map(r => (r.id === id ? { ...r, [field]: value } : r)) }));
+  // Cập nhật NHIỀU trường 1 hàng trong 1 lần (kéo-thả: startAt + wkd cùng lúc) → tránh 2 lần setState.
+  const setRowFields = (id, patch) =>
+    setPlan(p => ({ ...p, rows: p.rows.map(r => (r.id === id ? { ...r, ...patch } : r)) }));
   const addTeam = () =>
     setPlan(p => {
       const roots = p.rows.filter(r => !r.parentId).length;
@@ -237,6 +240,7 @@ export default function PlannerPage() {
           itemLabel={itemLabel}
           desiredLabel={desiredLabel}
           setRow={setRow}
+          setRowFields={setRowFields}
           addChild={addChild}
           addTeam={addTeam}
           removeTeam={removeTeam}

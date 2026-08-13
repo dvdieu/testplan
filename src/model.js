@@ -171,19 +171,22 @@ export function resolveWbs(plan) {
   const rows = (plan.rows || []).map(r => ({ ...r }));
   const kids = pid => rows.filter(r => (r.parentId || null) === pid);
   function schedule(node, start) {
-    node.start = start || null;
+    // startAt = vị trí user KÉO-THẢ bar (ghim tay). Có thì THẮNG lịch tự tính (auto-schedule tuần tự);
+    // không thì suy như cũ. Cho kéo bar tự do như demo SVAR mà vẫn giữ mô hình WKD (con kế thừa start này).
+    const s = node.startAt || start;
+    node.start = s || null;
     const cs = kids(node.id);
     if (!cs.length) {
-      node.end = start ? addWkdStr(start, num(node.wkd)) : null;
+      node.end = s ? addWkdStr(s, num(node.wkd)) : null;
       node.wkdEff = num(node.wkd);
     } else {
-      let end = start; // con SONG SONG: mọi con bắt đầu tại node.start, node bao tới con muộn nhất
+      let end = s; // con SONG SONG: mọi con bắt đầu tại node.start, node bao tới con muộn nhất
       cs.forEach(c => {
-        const e = schedule(c, start);
+        const e = schedule(c, s);
         if (e && (!end || parseDate(e) > parseDate(end))) end = e;
       });
-      node.end = end || start || null;
-      node.wkdEff = start && node.end ? diffWkd(start, node.end) : 0;
+      node.end = end || s || null;
+      node.wkdEff = s && node.end ? diffWkd(s, node.end) : 0;
     }
     return node.end;
   }

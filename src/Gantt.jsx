@@ -5,7 +5,7 @@
 import { useMemo, useState } from 'react';
 import { Gantt as SvarGantt, Willow, Toolbar, ContextMenu, Editor } from '@svar-ui/react-gantt';
 import '@svar-ui/react-gantt/all.css';
-import { addDaysStr, diffWkd, maxDate, minDate, parseDate, todayStr } from './date.js';
+import { addDaysStr, diffWkd, maxDate, minDate, nextWkd, parseDate, todayStr } from './date.js';
 import { num } from './model.js';
 
 // 'YYYY-MM-DD' → Date tại NỬA ĐÊM LOCAL. SVAR đọc giờ local và lengthUnit='day' làm tròn theo mốc
@@ -219,6 +219,7 @@ export default function Gantt({
   backend,
   itemLabel = 'API',
   setRow,
+  setRowFields,
   addChild,
   addTeam,
   removeTeam,
@@ -283,28 +284,31 @@ export default function Gantt({
     });
 
     // SỬA (đổi tên / kéo giãn bar / dời milestone) → mirror vào model sau khi SVAR áp dụng.
-    a.on('update-task', ({ id, task }) => {
-      if (!task) return;
+    a.on('update-task', (ev) => {
+      const { id, task, inProgress } = ev;
+      // BỎ QUA tick GIỮA lúc kéo (SVAR bắn update-task inProgress:true liên tục cho dnd mượt). Chỉ xử lý
+      // khi THẢ xong (inProgress falsy) — tránh remount (key=sig) giật, gãy thao tác kéo, mất drop cuối.
+      if (!task || inProgress) return;
       const c = classify(id);
       if (c.kind === 'team') {
         if (task.text != null) setRow && setRow(c.teamId, 'name', task.text);
-        // WBS: node lá sửa được WKD (ô lưới) hoặc kéo giãn bar → quy về số ngày làm việc.
-        // Node nhóm (có con) chỉ đổi tên — độ dài bao theo con, không sửa trực tiếp.
+        // WBS: node LÁ (không con) = bar kéo/giãn được như demo SVAR. Kéo NGANG → ghim startAt (vị trí
+        // thả) → resolveWbs giữ đúng chỗ; kéo MÉP (đổi độ dài) → WKD nhảy theo span. Sửa ô WKD trong lưới
+        // → dùng số user gõ. Node NHÓM (có con): chỉ đổi tên — SVAR tự dời con, span bao theo con.
         if (isWbs && !backend.rows.some(r => r.parentId === c.teamId)) {
-          // Xét theo CÁI GÌ ĐỔI, không theo trường nào có mặt: Editor (page details) & kéo giãn bar
-          // đều gửi task.wkd CŨ (== model) kèm start/end mới; sửa ô WKD trong lưới gửi wkd MỚI kèm
-          // start/end cũ. So wkd payload với model → khác thì đó là sửa ô WKD; bằng (cũ) thì là đổi
-          // ngày → quy WKD từ start/end (diffWkd bỏ cuối tuần). Payload dạng nào cũng đúng.
           const row = backend.rows.find(r => r.id === c.teamId) || {};
-          const newWkd = task.wkd != null && task.wkd !== '' ? num(task.wkd) : null;
-          if (newWkd != null && newWkd !== num(row.wkd)) {
-            setRow && setRow(c.teamId, 'wkd', newWkd);
-          } else if (task.start || task.end) {
-            const cur = a.getTask(id) || {};
-            const st = toStr(task.start || cur.start);
-            const en = toStr(task.end || cur.end);
-            if (st && en) setRow && setRow(c.teamId, 'wkd', num(diffWkd(st, en)));
-          }
+          const cur = a.getTask(id) || {};
+          const rawStart = task.start || cur.start;
+          const st = rawStart ? nextWkd(toStr(rawStart)) : null; // snap về ngày làm việc (thả vào cuối tuần)
+          const en = toStr(task.end || cur.end);
+          const spanWkd = st && en ? num(diffWkd(st, en)) : null;
+          const moved = st && row.start && st !== row.start;
+          const typedWkd = task.wkd != null && task.wkd !== '' ? num(task.wkd) : null;
+          const patch = {};
+          if (moved) patch.startAt = st; // kéo ngang → ghim vị trí (move giữ nguyên độ dài)
+          if (spanWkd != null && spanWkd !== num(row.wkd)) patch.wkd = spanWkd; // kéo mép → đổi WKD
+          else if (!moved && typedWkd != null && typedWkd !== num(row.wkd)) patch.wkd = typedWkd; // ô lưới
+          if (Object.keys(patch).length) setRowFields && setRowFields(c.teamId, patch);
         }
       } else if (c.kind === 'phase') {
         const field = PHASE_FIELD[c.phase];
