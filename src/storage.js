@@ -50,9 +50,10 @@ export async function listProjects() {
 export async function loadPlan(name, phase) {
   if (KV_ENABLED) {
     try {
-      const { plan: container } = await getRemotePlan(name);
-      if (!container) return null;
-      return container[phase] || null;
+      // getRemotePlan ĐÃ trả CONTAINER {engine,support,cheat} (hoặc null nếu chưa có). KHÔNG destructure .plan.
+      const container = await getRemotePlan(name);
+      if (container) return container[phase] || null;
+      // container null = dự án chưa trên KV → thử localStorage (migrate dữ liệu cũ) rồi thôi.
     } catch (err) {
       console.warn('KV get failed, falling back to localStorage', err);
     }
@@ -77,10 +78,16 @@ export async function savePlan(name, phase, plan) {
 
   if (KV_ENABLED) {
     try {
-      const { plan: existingContainer } = await getRemotePlan(name);
-      const container = existingContainer || {};
+      // GET container cũ để merge phase khác — BEST-EFFORT: lỗi/404 KHÔNG chặn PUT (nếu không dự án
+      // mới không bao giờ vào KV → rơi localStorage mãi). getRemotePlan trả container thẳng, KHÔNG .plan.
+      let container = {};
+      try {
+        container = (await getRemotePlan(name)) || {};
+      } catch (err) {
+        console.warn('KV get before save failed, writing fresh container', err);
+      }
       container[phase] = plan;
-      await saveRemotePlan(name, container);
+      await saveRemotePlan(name, container); // PUT = nguồn ghi chính vào KV
       localStorage.setItem(LS_PROJECTS_KEY, JSON.stringify([...projects]));
       return;
     } catch (err) {

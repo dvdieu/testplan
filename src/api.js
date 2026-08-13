@@ -20,8 +20,13 @@ export async function listProjects() {
   return fetchJson('/api/projects');
 }
 
+// Trả CONTAINER plan ({engine,support,cheat}) hoặc null nếu dự án CHƯA có trên KV.
+// 404 = chưa có → null (KHÔNG throw) để savePlan vẫn PUT tạo mới, không rơi về localStorage.
 export async function getPlan(name) {
-  const { plan } = await fetchJson(`/api/projects/${encodeURIComponent(name)}`);
+  const res = await fetch(`${API_BASE}/api/projects/${encodeURIComponent(name)}`, { headers: CORS });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error((await res.text()) || res.statusText);
+  const { plan } = await res.json();
   return plan;
 }
 
