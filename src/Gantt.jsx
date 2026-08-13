@@ -174,8 +174,10 @@ function buildWbs(plan, backend) {
   const hasChild = id => rows.some(r => r.parentId === id);
   rows.forEach(r => {
     if (hasChild(r.id)) {
-      // Summary CÓ start/end tường minh (resolveWbs đã suy) → SVAR khỏi tự duyệt con để tính span.
-      tasks.push({ id: r.id, parent: r.parentId || 0, text: r.name || 'Nhóm ?', type: 'summary', open: true, start: D(r.start), end: D(r.end), wkd: r.wkdEff });
+      // NATIVE rollup: summary KHÔNG set start/end → SVAR tự bao con (min-start … max-end), như nhánh
+      // 3-phase. Bỏ envelope tự viết (nguồn của bug start>end→WKD 0). wkd = span WKD chỉ cho cột lưới
+      // (thư viện free không có calendar working-day nên WKD vẫn phải tự tính — xem model.js).
+      tasks.push({ id: r.id, parent: r.parentId || 0, text: r.name || 'Nhóm ?', type: 'summary', open: true, wkd: r.wkdEff });
     } else if (num(r.wkd) === 0) {
       // Lá 0 ngày = MỐC (kim cương). Sum "Package" (đóng gói) = mốc hoàn thành dự án, đặt tại projectDone.
       tasks.push({ id: r.id, parent: r.parentId || 0, text: r.name || 'Mốc ?', type: 'milestone', start: D(r.start) });
